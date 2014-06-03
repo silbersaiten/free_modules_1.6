@@ -1,0 +1,11 @@
+﻿Hallo {firstname} {lastname},
+
+Danke für das Interesse an unserem Newsletter
+
+Bitte klicken Sie auf folgenden Link, um die Registrierung abzuschließen: 
+
+{activation_link} 
+
+Sie können sich jederzeit abmelden, indem Sie Ihre E-Mail adresse in unserem Shop eingeben und die Option "Abmelden" aktiveren.
+
+{mail_footer_html}

@@ -1,0 +1,1780 @@
+<?php
+require_once(dirname(__FILE__) . '/moussiqfree.php');
+require_once(dirname(__FILE__) . '/classes/ExportTools.php');
+require_once(dirname(__FILE__) . '/classes/Export.php');
+require_once(dirname(__FILE__) . '/classes/MoussiqFreeService.php');
+
+class AdminMoussiqFree extends AdminTab
+{
+    public $multishop_context;
+    public $multishop_context_group;
+
+	public function __construct()
+	{
+		global $cookie, $smarty, $_LANGADM, $_MODULES, $_MODULE, $currentIndex;
+
+
+
+	    $this->module = 'moussiqfree';
+		$this->className = 'MoussiqFreeService';
+		$this->view   = true;
+	 	$this->edit   = true;
+	 	$this->delete = true;
+		$this->table = 'moussiqfree_service';
+
+		$langFile = _PS_MODULE_DIR_ . $this->module . '/' . Language::getIsoById((int)($cookie->id_lang)) . '.php';
+		
+		if (file_exists($langFile))
+		{
+			require_once $langFile;
+			
+			if (method_exists('Module', 'findTranslation'))
+				$_MODULES = array_merge((is_array($_MODULES) ? $_MODULES : array()), $_MODULE);
+			
+			foreach ($_MODULE as $key => $value)
+				if (strtolower(substr(strip_tags($key), 0, 5)) == 'admin')
+					$_LANGADM[str_replace('_', '', strip_tags($key))] = $value;
+		}
+		
+        $this->fieldsDisplay = array(
+            'id_moussiqfree_service'    => array(
+                'title'         => $this->l('ID') ,
+                'align'         => 'center',
+                'width'         => 25
+            ) ,
+            'name'          => array(
+                'title'         => $this->l('Db Name') ,
+                'width'         => 300
+            ) ,
+            'status'        => array(
+                'title'         => $this->l('Enabled'), 
+                'width'         => 25, 
+                'align'         => 'center', 
+                'active'        => 'status', 
+                'type'          => 'bool', 
+                'orderby'       => false
+            )
+        );
+		
+		
+		$countries  = Country::getCountries((int)($cookie->id_lang));
+        $carriers   = Carrier::getCarriers((int)($cookie->id_lang), true);
+        $languages  = Language::getLanguages();
+        $conditions = array(
+            array('condition'=>'new:used:refurbished', 'name'=>$this->l('New').', '.$this->l('Used').', '.$this->l('Refurbished')),
+            array('condition'=>'new', 'name'=>$this->l('New')),
+            array('condition'=>'used', 'name'=>$this->l('Used')),
+            array('condition'=>'refurbished', 'name'=>$this->l('Refurbished')),
+            array('condition'=>'new:used', 'name'=>$this->l('New').', '.$this->l('Used')),
+            array('condition'=>'new:refurbished', 'name'=>$this->l('New').', '.$this->l('Refurbished')),
+            array('condition'=>'used:refurbished', 'name'=>$this->l('Used').', '.$this->l('Refurbished')),
+        );
+		
+		$defaultCountry = (int)Configuration::get('EXPORTFREE_COUNTRY');
+		$states = false;
+		
+		if (Country::containsStates($defaultCountry))
+			$states = State::getStatesByIdCountry($defaultCountry);
+		
+        $this->optionTitle = $this->l('Export settings');
+        $this->_fieldsOptions = array(
+            'EXPORTFREE_INACTIVE' => array(
+                'title'     => $this->l('Export inactive products'), 
+                'desc'      => $this->l('Set to "off" to export active products only'), 
+                'validation'=> 'isBool', 
+                'cast'      => 'intval', 
+                'type'      => 'bool'
+            ),
+
+            'EXPORTFREE_CONDITION' => array(
+                'title'     => $this->l('Export products with condition'),
+                'desc'      => $this->l('Select conditions in which you want your products to be exported'),
+                'size'          => 3,
+                'type'          => 'select',
+                'list'          => $conditions,
+                'identifier'    => 'condition'
+            ),
+            
+            'EXPORTFREE_LANGUAGE' => array(
+                'title'         => $this->l('Export language'), 
+                'desc'          => $this->l('Select language in which you want your products to be exported'), 
+                'cast'          => 'intval', 
+                'size'          => 3, 
+                'type'          => 'select', 
+                'list'          => $languages, 
+                'identifier'    => 'id_lang'
+            ),
+			
+			'EXPORTFREE_GROUP' => array(
+				'title'         => $this->l('Customer group'), 
+				'desc'          => $this->l('Export prices for selected customer group'), 
+				'cast'          => 'intval', 
+				'size'          => 3, 
+				'type'          => 'select', 
+				'list'          => Group::getGroups((int)$cookie->id_lang), 
+				'identifier'    => 'id_group'
+			),
+            
+            'EXPORTFREE_HEADER' => array(
+                'title'     => $this->l('CSV header'), 
+                'desc'      => $this->l('This will add header with customizable field names to csv files generated by module'), 
+                'validation'=> 'isBool', 
+                'cast'      => 'intval', 
+                'type'      => 'bool'
+            ),
+            
+            'EXPORTFREE_DELIMITER' => array(
+                'title'     => $this->l('Fields Delimiter'), 
+                'desc'      => $this->l('Specify default delimiter for fields in exported csv files. You can set up different delimiters for different services or have them use the default.'), 
+                'size'      => 3, 
+                'type'      => 'text', 
+            ),
+            
+            'EXPORTFREE_ENCLOSURE' => array(
+                'title'         => $this->l('Enclosure character'), 
+                'desc'          => $this->l('Select an enclosure character for CSV data.'), 
+                'cast'          => 'intval', 
+                'size'          => 3, 
+                'type'          => 'select', 
+                'list'          => array(array('enclosure' => 1, 'name' => $this->l('Double Quotes')), array('enclosure' => 2, 'name' => $this->l('Single Quotes'))), 
+                'identifier'    => 'enclosure'
+            ),
+            
+            
+            'EXPORTFREE_COUNTRY' => array(
+                'title'         => $this->l('Default country'), 
+                'desc'          => $this->l('Set default country to export prices for. You can change it for each service individually'), 
+                'cast'          => 'intval', 
+                'size'          => 3, 
+                'type'          => 'select', 
+                'list'          => $countries, 
+                'identifier'    => 'id_country'
+            ),
+            
+            'EXPORTFREE_CARRIER' => array(
+                'title'         => $this->l('Default carrier'), 
+                'desc'          => $this->l('Prices of this carrier will be exported as "delivery price" for each product'), 
+                'cast'          => 'intval', 
+                'size'          => 3, 
+                'type'          => 'select', 
+                'list'          => $carriers, 
+                'identifier'    => 'id_carrier'
+            ),
+			
+			'EXPORTFREE_STORE' => array(
+				'title'         => $this->l('Store to export products from'), 
+				'desc'          => $this->l('Related to product prices'), 
+				'cast'          => 'intval', 
+				'size'          => 3, 
+				'type'          => 'select', 
+				'list'          => Db::getInstance()->ExecuteS('SELECT `id_store`, `name` FROM `' . _DB_PREFIX_ . 'store`'), 
+				'identifier'    => 'id_store'
+			),
+			
+			'EXPORTFREE_ENGINE' => array(
+				'title'         => $this->l('Export Engine'), 
+				'desc'          => $this->l('Default export engine'), 
+				'size'          => 3, 
+				'type'          => 'select', 
+				'list'          => $this->getExportEnginesForSetup(), 
+				'identifier'    => 'engine'
+			)
+        );
+
+		parent::__construct();
+		
+		$this->l('Add new');
+		$this->l('Display');
+		$this->l('Page');
+		$this->l('result(s)');
+		$this->l('Reset');
+		$this->l('Filter');
+		$this->l('ID');
+		$this->l('New');
+		$this->l('Customer');
+		$this->l('Total');
+		$this->l('Payment');
+		$this->l('Status');
+		$this->l('Date');
+		$this->l('PDF');
+		$this->l('Actions');
+		$this->l('View');
+		$this->l('Edit');
+		$this->l('Delete');
+		$this->l('Delete selection');
+	}
+
+    public function beforeUpdateOptions() {
+        $this->optionsList[0]['fields'] = $this->_fieldsOptions;
+    }
+
+	public function updateOptions($token)
+	{
+		global $cookie;
+		
+		if ($this->tabAccess['edit'] === '1')
+		{
+			$updateState = 0;
+			
+			if ($stateId = Tools::getValue('EXPORTFREE_STATE'))
+			{
+				$country = Tools::getValue('EXPORTFREE_COUNTRY');
+				
+				if (Country::containsStates((int)$country))
+				{
+					$state = new State((int)$stateId);
+					
+					if ( ! Validate::isLoadedObject($state))
+						$this->_errors[] = Tools::displayError('Unable to find a selected state');
+					elseif ($stateId != 0 && ! $state->id_country == (int)$country)
+						$this->_errors[] = Tools::displayError('The selected state is in the different country');
+					else
+						$updateState = (int)$state->id;
+				}
+				
+				Configuration::updateValue('EXPORTFREE_STATE', $updateState);
+			}
+		}
+
+        if ($this->tabAccess['edit'] === '1')
+        {
+            $this->beforeUpdateOptions();
+
+            $languages = Language::getLanguages(false);
+            foreach ($this->optionsList as $category => $categoryData)
+            {
+                $fields = $categoryData['fields'];
+
+                /* Check required fields */
+                foreach ($fields as $field => $values)
+                    if (isset($values['required']) && $values['required'] && !empty($_POST['multishopOverrideOption'][$field]))
+                        if (isset($values['type']) && $values['type'] == 'textLang')
+                        {
+                            foreach ($languages as $language)
+                                if (($value = Tools::getValue($field.'_'.$language['id_lang'])) == false && (string)$value != '0')
+                                    $this->_errors[] = sprintf(Tools::displayError('field %s is required.'), $values['title']);
+                        }
+                        elseif (($value = Tools::getValue($field)) == false && (string)$value != '0')
+                            $this->_errors[] = sprintf(Tools::displayError('field %s is required.'), $values['title']);
+
+                /* Check fields validity */
+                foreach ($fields as $field => $values)
+                    if (isset($values['type']) && $values['type'] == 'textLang')
+                    {
+                        foreach ($languages as $language)
+                            if (Tools::getValue($field.'_'.$language['id_lang']) && isset($values['validation']))
+                                if (!Validate::$values['validation'](Tools::getValue($field.'_'.$language['id_lang'])))
+                                    $this->_errors[] = sprintf(Tools::displayError('field %s is invalid.'), $values['title']);
+                    }
+                    elseif (Tools::getValue($field) && isset($values['validation']))
+                        if (!Validate::$values['validation'](Tools::getValue($field)))
+                            $this->_errors[] = sprintf(Tools::displayError('field %s is invalid.'), $values['title']);
+
+                /* Default value if null */
+                foreach ($fields as $field => $values)
+                    if (!Tools::getValue($field) && isset($values['default']))
+                        $_POST[$field] = $values['default'];
+
+                if (!count($this->_errors))
+                {
+                    foreach ($fields as $key => $options)
+                    {
+                        if (isset($options['visibility']) && $options['visibility'] > Shop::getContext())
+                            continue;
+
+                        /*if (Shop::isFeatureActive() && empty($_POST['multishopOverrideOption'][$key]))
+                        {
+                            Configuration::deleteFromContext($key);
+                            continue;
+                        }
+                        */
+
+                        // check if a method updateOptionFieldName is available
+                        $method_name = 'updateOption'.Tools::toCamelCase($key, true);
+                        if (method_exists($this, $method_name))
+                            $this->$method_name(Tools::getValue($key));
+                        else if (isset($options['type']) && in_array($options['type'], array('textLang', 'textareaLang')))
+                        {
+                            $list = array();
+                            foreach ($languages as $language)
+                            {
+                                $val = (isset($options['cast']) ? $options['cast'](Tools::getValue($key.'_'.$language['id_lang'])) : Tools::getValue($key.'_'.$language['id_lang']));
+                                if ($this->validateField($val, $options))
+                                {
+                                    if (Validate::isCleanHtml($val))
+                                        $list[$language['id_lang']] = $val;
+                                    else
+                                        $this->_errors[] = Tools::displayError('Can not add configuration '.$key.' for lang '.Language::getIsoById((int)$language['id_lang']));
+                                }
+                            }
+                            Configuration::updateValue($key, $list);
+                        }
+                        else
+                        {
+                            $val = (isset($options['cast']) ? $options['cast'](Tools::getValue($key)) : Tools::getValue($key));
+                            if ($this->validateField($val, $options))
+                            {
+                                if (Validate::isCleanHtml($val)) {
+                                    Configuration::updateValue($key, $val);
+
+                                }
+                                else
+                                    $this->_errors[] = Tools::displayError('Can not add configuration '.$key);
+                            }
+                        }
+                    }
+                }
+            }
+            if (count($this->_errors) <= 0)
+                Tools::redirectAdmin(self::$currentIndex.'&conf=6&token='.$token);
+        }
+        else
+            $this->_errors[] = Tools::displayError('You do not have permission to edit here.');
+
+		//return parent::updateOptions($token);
+	}
+	
+	protected function l($string, $class = 'AdminTab', $addslashes = false, $htmlentities = true)
+	{
+		return parent::l($string, strtolower(get_class($this)), $addslashes, $htmlentities);
+	}
+	
+	private static function arrayInsertAfter($array, $addKey, $addVal, $after)
+	{
+		$result = array();
+		
+		foreach($array as $key => $value)
+		{
+			$result[$key] = $value;
+			
+			if ($key == $after)
+				$result[$addKey] = $addVal;
+		}
+		
+		return $result;
+	}
+	
+    protected function getReadableFields($fields)
+    {
+        global $cookie;
+        $titles = array(
+            'id_product' => array(
+                'name' => $this->l('Product ID', __CLASS__),
+                'class' => 'prodRel'
+            ),
+            'active' => array(
+                'name' => $this->l('Product status', __CLASS__),
+                'class' => 'prodRel'
+            ),
+            'date_add' => array(
+                'name' => $this->l('Addition date', __CLASS__),
+                'class' => 'prodRel'
+            ),
+            'date_upd' => array(
+                'name' => $this->l('Update date', __CLASS__),
+                'class' => 'prodRel'
+            ),
+            'id_category_default' => array(
+                'name' => $this->l('Default Category ID', __CLASS__),
+                'class' => 'prodRel'//'catRel'
+            ),
+            'id_manufacturer' => array(
+                'name' => $this->l('Manufacturer ID', __CLASS__),
+                'class' => 'prodRel'//'manRel'
+            ),
+            'id_supplier' => array(
+                'name' => $this->l('Supplier ID', __CLASS__),
+                'class' => 'prodRel'//'supRel'
+            ),
+            'id_tax' => array(
+                'name' => $this->l('Tax ID', __CLASS__),
+                'class' => 'prodRel'//'taxRel'
+            ),
+            'description' => array(
+                'name' => $this->l('Description', __CLASS__),
+                'class' => 'prodRel'
+            ),
+            'description_short' => array(
+                'name' => $this->l('Short Description', __CLASS__),
+                'class' => 'prodRel'
+            ),
+            'meta_description' => array(
+                'name' => $this->l('Meta Description', __CLASS__),
+                'class' => 'prodRel'//'metaRel'
+            ),
+            'meta_keywords' => array(
+                'name' => $this->l('Meta Keywords', __CLASS__),
+                'class' => 'prodRel'//'metaRel'
+            ),
+            'meta_title' => array(
+                'name' => $this->l('Meta Title', __CLASS__),
+                'class' => 'prodRel'//'metaRel'
+            ),
+            'quantity' => array(
+                'name' => $this->l('Quantity in stock', __CLASS__),
+                'class' => 'prodRel'
+            ),
+            'name' => array(
+                'name' => $this->l('Product\'s name', __CLASS__),
+                'class' => 'prodRel'
+            ),
+            'reference' => array(
+                'name' => $this->l('Reference', __CLASS__),
+                'class' => 'prodRel'
+            ),
+            'supplier_reference' => array(
+                'name' => $this->l('Supplier\'s Reference', __CLASS__),
+                'class' => 'prodRel'
+            ),
+            'weight' => array(
+                'name' => $this->l('Weight', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'wholesale_price' => array(
+                'name' => $this->l('Wholesale Price', __CLASS__),
+                'class' => 'prodRel'//'priceRel'
+            ),
+            'price' => array(
+                'name' => $this->l('Price', __CLASS__),
+                'class' => 'prodRel'//'priceRel'
+            ),
+            'ecotax' => array(
+                'name' => $this->l('Ecotax', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'location' => array(
+                'name' => $this->l('Location', __CLASS__),
+                'class' => 'prodRel'//'prodRel'
+            ),
+            'ean13' => array(
+                'name' => $this->l('Ean13', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'reduction_from' => array(
+                'name' => $this->l('Reduction from', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'reduction_to' => array(
+                'name' => $this->l('Reduction to', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'reduction_percent' => array(
+                'name' => $this->l('Reduction percent', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'reduction_price' => array(
+                'name' => $this->l('Reduction price', __CLASS__),
+                'class' => 'prodRel'//'priceRel'
+            ),
+            'available_now' => array(
+                'name' => $this->l('Available now', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'available_later' => array(
+                'name' => $this->l('Available later', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'available_for_order' => array(
+                'name' => $this->l('Available for order', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'additional_shipping_cost' => array(
+                'name' => $this->l('Additional shipping cost', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'condition' => array(
+                'name' => $this->l('Condition', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'height' => array(
+                'name' => $this->l('Height', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'width' => array(
+                'name' => $this->l('Width', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'depth' => array(
+                'name' => $this->l('Depth', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'upc' => array(
+                'name' => $this->l('UPC', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'show_price' => array(
+                'name' => $this->l('Show price', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'unit_price_ratio' => array(
+                'name' => $this->l('Unit Price ratio', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'online_only' => array(
+                'name' => $this->l('Online Only', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'minimal_quantity' => array(
+                'name' => $this->l('Minimal quantity', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'id_tax_rules_group' => array(
+                'name' => $this->l('Tax Rule Group ID', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+            'unity' => array(
+                'name' => $this->l('Unity', __CLASS__),
+                'class' => 'prodRel'//false
+            ),
+        );
+        
+        $result = array();
+        
+        foreach ($fields as $field) 
+            $result[$field] = isset($titles[$field]) ? $titles[$field] : array('name' => $field, 'class' => 'prodRel');
+        
+        $result['tax_rate'] = array(
+            'name'  => $this->l('Tax Rate', __CLASS__),
+            'class' => 'prodRel'//'taxRel'
+        );
+        $result['total_tax'] = array(
+            'name' => $this->l('Total Tax', __CLASS__),
+            'class' => 'prodRel'//'taxRel'
+        );
+        $result['manufacturer_name'] = array(
+            'name' => $this->l('Manufacturer', __CLASS__),
+            'class' => 'prodRel'//'manRel'
+        );
+        $result['supplier_name'] = array(
+            'name' => $this->l('Supplier', __CLASS__),
+            'class' => 'prodRel'//'supRel'
+        );
+        $result['picture_link'] = array(
+            'name' => $this->l('Picture url', __CLASS__),
+            'class' => 'prodRel'//'prodRel'
+        );
+        $result['product_link'] = array(
+            'name' => $this->l('Product url', __CLASS__),
+            'class' => 'prodRel'//'prodRel'
+        );
+        $result['shipping_price'] = array(
+            'name' => $this->l('Shipping Price', __CLASS__),
+            'class' => 'prodRel'//'shippingRel'
+        );
+        $result['shipping_with_fee'] = array(
+            'name' => $this->l('Shipping price including COD fee', __CLASS__),
+            'class' => 'prodRel'//'shippingRel'
+        );
+        $result['category_name'] = array(
+            'name' => $this->l('Category Name', __CLASS__),
+            'class' => 'prodRel'//'catRel'
+        );
+        $result['price_with_tax'] = array(
+	    'name' => $this->l('Price (tax incl)', __CLASS__),
+	    'class' => 'prodRel'//'priceRel'
+	);
+
+        uasort($result, array($this, 'cmpField'));
+
+        //get group of attributes
+        $attr_result = array();
+        $attrGroups = AttributeGroup::getAttributesGroups($cookie->id_lang);
+        foreach ($attrGroups as $ag) {
+            $attr_result['ag'.$ag['id_attribute_group']] = array(
+                'name' => $ag['name'],
+                'class' => 'attrRel'
+            );
+        }
+        uasort($attr_result, array($this, 'cmpField'));
+        $result = $result + $attr_result;
+
+        //get features
+        $feat_result = array();
+        $features = Feature::getFeatures($cookie->id_lang);
+        foreach ($features as $ft) {
+            $feat_result['ft'.$ft['id_feature']] = array(
+                'name' => $ft['name'],
+                'class' => 'featRel'
+            );
+        }
+        uasort($feat_result, array($this, 'cmpField'));
+        $result = $result + $feat_result;
+
+        $result['empty_field'] = array(
+            'name' => $this->l('Empty Field', __CLASS__),
+            'class' => 'specialRel'
+        );
+
+        return $result;
+    }
+
+    public function cmpField($a, $b) {
+        return strcasecmp($a['name'], $b['name']);
+    }
+	
+	protected function getExportEngines()
+	{
+		require_once(dirname(__FILE__) . '/classes/Export.php');
+		
+		$enginesDir = dirname(__FILE__) . '/engines/';
+		
+		if ( ! is_dir($enginesDir))
+			die(Tools::displayError('Export engines directory does not exist'));
+		
+		$scan = scandir($enginesDir);
+		$preparedEngines = array();
+			
+		foreach ($scan as $exportEngine)
+		{
+			if ( ! in_array($exportEngine, array('.', '..')))
+			{
+				$tmp = explode('.', $exportEngine);
+				
+				if (strtolower(array_pop($tmp)) == 'php' && strtolower(substr($exportEngine, 0, 6)) == 'export' && is_object($exportEngineObj = Export::setExportEngine(substr($exportEngine, 0, -4), false)))
+				{
+					$preparedEngines[substr($exportEngine, 0, -4)] = $exportEngineObj->name . ' (*.' . $exportEngineObj->extension . ')';
+				}
+			}
+		}
+		
+		if ( ! sizeof($preparedEngines))
+			die(Tools::displayError('No export engines were found'));
+			
+		return $preparedEngines;
+	}
+	
+	protected function getExportEnginesForSetup()
+	{
+		$preparedEngines = array();
+		
+		if ($engines = $this->getExportEngines())
+		{
+			foreach ($engines as $engineFile => $engineName)
+			{
+				$preparedEngines[] = array('engine' => $engineFile, 'name' => $engineName);
+			}
+			
+			return $preparedEngines;
+		}
+		
+		return false;
+	}
+	
+    protected function getDbFieldNames($table)
+    {
+        if ( ! is_array($table)) 
+        {
+            if ($result = Db::getInstance()->getRow('SELECT * FROM `' . _DB_PREFIX_ . $table . '`')) 
+                return array_keys($result);
+            
+            return false;
+        }
+        
+        $fields = array();
+        
+        foreach ($table as $tbl) 
+        {
+            if ($result = Db::getInstance()->getRow('SELECT * FROM `' . _DB_PREFIX_ . $tbl . '`')) 
+                $fields = array_merge($fields, array_keys($result));
+            else
+                return false;
+        }
+        
+        $fields = array_flip($fields);
+        
+        // We definitely don't need those 
+        // fields.
+        unset(
+            $fields['customizable'],
+            $fields['id_color_default'],
+            $fields['id_lang'],
+            $fields['indexed'],
+            $fields['text_fields'],
+            $fields['uploadable_files'],
+            $fields['link_rewrite'],
+            $fields['on_sale'],
+            $fields['out_of_stock'],
+            $fields['quantity_discount'],
+			$fields['cache_has_attachments'],
+			$fields['cache_is_pack'],
+			$fields['cache_default_attribute']
+        );
+        
+        $fields = array_flip($fields);
+        sort($fields);
+        
+        return $fields;
+    }
+	
+    private static function getSettingsValue($postVal, $objVal)
+    {
+        return (isset($postVal) ? ((int)($postVal) < 0 ? false : (int)($postVal)) : ($objVal == '') ? false : (int)($objVal));
+    }
+    private static function getSettingsStringValue($postVal, $objVal)
+    {
+        return (isset($postVal) ? ($postVal) : ($objVal == '') ? false : ($objVal));
+    }
+	
+	public static function recurseCategoryForInclude($id_obj, $indexedCategories, $categories, $current, $id_category = 1, $id_category_default = NULL, $has_suite = array())
+	{
+		global $done;
+		static $irow;
+
+		if (!isset($done[$current['infos']['id_parent']]))
+			$done[$current['infos']['id_parent']] = 0;
+		$done[$current['infos']['id_parent']] += 1;
+
+		$todo = sizeof($categories[$current['infos']['id_parent']]);
+		$doneC = $done[$current['infos']['id_parent']];
+
+		$level = $current['infos']['level_depth'] + 1;
+		$selected = false;
+		$name = false;
+		
+		foreach ($indexedCategories as $categoryData)
+		{
+			if (array_key_exists('id_category', $categoryData))
+			{
+				if ($id_category == (int)$categoryData['id_category'])
+				{
+					$selected = true;
+				}
+			}
+		}
+
+		echo '
+		<tr class="'.($irow++ % 2 ? 'alt_row' : '').'">
+			<td>
+				<input type="checkbox" name="categoryBox[' . $id_category . '][id_category]" class="categoryBox'.($id_category_default == $id_category ? ' id_category_default' : '').'" id="categoryBox_'.$id_category.'" value="'.$id_category.'"'.(($selected) ? ' checked="checked"' : '').' />
+			</td>
+			<td>
+				'.$id_category.'
+			</td>
+			<td>';
+			
+			for ($i = 2; $i < $level; $i++)
+				echo '<img src="../img/admin/lvl_'.$has_suite[$i - 2].'.gif" alt="" />';
+				
+			echo '<img src="../img/admin/'.($level == 1 ? 'lv1.gif' : 'lv2_'.($todo == $doneC ? 'f' : 'b').'.gif').'" alt="" /> &nbsp;
+			<label for="categoryBox_'.$id_category.'" class="t">'.stripslashes($current['infos']['name']).'</label>
+			</td>
+		</tr>';
+
+		if ($level > 1)
+			$has_suite[] = ($todo == $doneC ? 0 : 1);
+		if (isset($categories[$id_category]))
+			foreach ($categories[$id_category] AS $key => $row)
+				if ($key != 'infos')
+					self::recurseCategoryForInclude($id_obj, $indexedCategories, $categories, $categories[$id_category][$key], $key, $id_category_default, $has_suite);
+	}
+	
+    public function displayForm($isMainTab = true)
+    {
+        global $cookie, $currentIndex;
+
+        $currentIndex = $_SERVER['SCRIPT_NAME'].(($controller = Tools::getValue('controller')) ? '?controller='.$controller: '');
+
+        parent::displayForm($isMainTab);
+
+        $obj = $this->loadObject(true);
+
+		$url                = $currentIndex . '&token=' . Tools::getAdminTokenLite('AdminMoussiqFree');
+		$fields             = $this->getReadableFields($this->getDbFieldNames(array('product', 'product_lang')));
+        $countries          = Country::getCountries((int)$cookie->id_lang);
+        $carriers           = Carrier::getCarriers((int)($cookie->id_lang), true);
+        $languages          = Language::getLanguages();
+        $customerGroups     = Group::getGroups((int)$cookie->id_lang);
+		$engines 			= $this->getExportEngines();
+		$stores             = Db::getInstance()->ExecuteS('SELECT `id_store`, `name` FROM `' . _DB_PREFIX_ . 'store`');
+        $shops              = Db::getInstance()->ExecuteS('SELECT `id_shop`, `name` FROM `' . _DB_PREFIX_ . 'shop`');
+        $conditions = array(
+            array('condition'=>'new:used:refurbished', 'name'=>$this->l('New').', '.$this->l('Used').', '.$this->l('Refurbished')),
+            array('condition'=>'new', 'name'=>$this->l('New')),
+            array('condition'=>'used', 'name'=>$this->l('Used')),
+            array('condition'=>'refurbished', 'name'=>$this->l('Refurbished')),
+            array('condition'=>'new:used', 'name'=>$this->l('New').', '.$this->l('Used')),
+            array('condition'=>'new:refurbished', 'name'=>$this->l('New').', '.$this->l('Refurbished')),
+            array('condition'=>'used:refurbished', 'name'=>$this->l('Used').', '.$this->l('Refurbished')),
+        );
+        
+        $headerSet          = self::getSettingsValue(Tools::getValue('header', null), $obj->header);
+		$export_engine      = self::getSettingsValue(Tools::getValue('export_engine', null), $obj->export_engine);
+        $export_inactiveSet = self::getSettingsValue(Tools::getValue('export_inactive', null), $obj->export_inactive);
+        $enclosureSet       = self::getSettingsValue(Tools::getValue('enclosure', null), $obj->enclosure);
+        $carrierSet         = self::getSettingsValue(Tools::getValue('id_carrier', null), $obj->id_carrier);
+        $countrySet         = self::getSettingsValue(Tools::getValue('id_country', null), $obj->id_country);
+		$stateSet           = self::getSettingsValue(Tools::getValue('id_state', null), $obj->id_state);
+        $conditionSet       = self::getSettingsStringValue(Tools::getValue('condition', null), $obj->condition);
+        $langSet            = self::getSettingsValue(Tools::getValue('id_lang', null), $obj->id_lang);
+		$groupSet           = self::getSettingsValue(Tools::getValue('id_group', null), $obj->id_group);
+		$storeSet           = self::getSettingsValue(Tools::getValue('id_store', null), $obj->id_store);
+        $shopSet           = self::getSettingsValue(Tools::getValue('id_shop', null), $obj->id_shop);
+
+		
+		$psVersion = explode('.', _PS_VERSION_);
+		
+		$reductionAllowed = ((int)$psVersion[0] == 1 && (int)$psVersion[1] < 4);
+
+        echo '
+        <link type="text/css" rel="stylesheet" href="' . __PS_BASE_URI__ . 'modules/' . $this->module . '/css/style.css" />
+        <script src="' . __PS_BASE_URI__ . 'modules/' . $this->module . '/js/jquery-ui.min.js"></script>
+        <script src="' . __PS_BASE_URI__ . 'modules/' . $this->module . '/js/json2.js"></script>
+        <script type="text/javascript">
+            var fNameLabel            = "' . $this->l('Field Name') . '";
+            var fBeforeLabel          = "' . $this->l('Before Value') . '";
+            var fAfterLabel           = "' . $this->l('After Value') . '";
+            var fValueLabel           = "' . $this->l('Value') . '";
+            var fWithTaxLabel         = "' . $this->l('Apply Tax') . '";
+            var fWithShippingLabel    = "' . $this->l('Add Shipping Price') . '";
+            var fWithReductionLabel   = "' . $this->l('Include Price Reduction') . '";
+            var fUrlsOfAllPictures   = "' .  $this->l('Urls of all pictures') . '";
+            var FControlDelete        = "' . $this->l('Delete this Field') . '";
+            var FControlEdit          = "' . $this->l('Show Field\'s Settings') . '";
+            var FCloseSettings        = "' . $this->l('Hide this Field\'s settings') . '";
+            var fCodFee               = "' . $this->l('COD Fee') . '";
+			var showReduction         = ' . ($reductionAllowed ? 'true' : 'false') . ';
+			var serviceCountrySelected = ' . ($countrySet ? (int)$countrySet : (int)Configuration::get('EXPORTFREE_COUNTRY')) . ';
+			var serviceStateSelected = ' . ($stateSet ? (int)$stateSet : (int)Configuration::get('EXPORTFREE_STATE')) . ';
+			
+			function processCheckBoxes(currentValue) {
+				$("input[name^=categoryBox]").attr("checked", currentValue);
+			}
+			
+			$(document).ready(function(){
+				initStateSelect(\'select[name=id_country]\', \'id_state\', serviceStateSelected, serviceCountrySelected);
+			});
+        </script>
+        <script src="' . __PS_BASE_URI__ . 'modules/' . $this->module . '/js/helper.js"></script>
+        <script src="' . __PS_BASE_URI__ . 'modules/' . $this->module . '/js/exporter.js"></script>
+        <script src="' . __PS_BASE_URI__ . 'modules/' . $this->module . '/js/init.js"></script>
+        <script src="' . __PS_BASE_URI__ . 'modules/' . $this->module . '/js/timepicker.js"></script>';
+	
+
+		if ($template = Tools::getValue('tplFile', false))
+		{
+			echo '
+			<div class="confirmation conf">
+				' . $this->l('You can now download your template file:') . '<a href="' . _MODULE_DIR_ . 'moussiqfree/download.php?key=' . (md5(_COOKIE_KEY_)) . '&template=' . $template . '">' . $template . '</a>
+			</div>';
+		}
+		
+		echo '
+        <p style="margin-bottom: 1em;">
+            <a href="' . $url . '"><img src="../img/admin/arrow2.gif" /> ' . $this->l('Back to services list') . '</a>
+        </p>
+        <form action="' . $_SERVER['REQUEST_URI'] . '" method="post" id="mousiqueMainFrm">
+            ' . ($obj->id ? '<input type="hidden" name="' . $this->identifier . '" value="' . $obj->id . '" />' : '') . '
+			
+            <fieldset style="margin-bottom: 1em;">
+                <legend>
+                    <img src="../modules/' . $this->module . '/images/' . ($obj->id ? 'edit' : 'add') . '.png" /> ' . $this->l('Service name') . '
+                </legend>
+				
+                <label>' . $this->l('Name') . '</label>
+                <div class="margin-form">
+                    <input type="text" name="name" value="' . ($this->getFieldValue($obj, 'name')) . '" /><sup>*</sup>
+                    <p class="clear">' . $this->l('Service name') . '</p>
+                </div>
+			</fieldset>
+
+            <span id="toggleMousiqueSettings">
+                <img src="../img/admin/arrow.gif" /> 
+                ' . $this->l('Click here to display template settings') . '
+            </span>
+            <fieldset style="margin-bottom: 1em;" id="mousiqueSettings">
+                <legend>
+                    <img src="../modules/' . $this->module . '/images/' . ($obj->id ? 'edit' : 'add') . '.png" /> ' . ($obj->id ? $this->l('Update existing service') : $this->l('Add new service')) . '
+                </legend>
+
+                <label>' . $this->l('Status:') . ' </label>
+                <div class="margin-form">
+                    <input type="radio" name="status" id="status_on" value="1" ' . ($this->getFieldValue($obj, 'status') ? 'checked="checked" ' : '') . '/>
+                    <label class="t" for="status_on"> <img src="../img/admin/enabled.gif" alt="' . $this->l('Enabled') . '" title="' . $this->l('Enabled') . '" /></label>
+                    <input type="radio" name="status" id="status_off" value="0" ' . (!$this->getFieldValue($obj, 'status') ? 'checked="checked" ' : '') . '/>
+                    <label class="t" for="status_off"> <img src="../img/admin/disabled.gif" alt="' . $this->l('Disabled') . '" title="'.$this->l('Disabled') . '" /></label>
+                    <p>' . $this->l('Is this service active? (If set to "off" module will not generate csv for it)') . '</p>
+                </div>
+				
+				<label>' . $this->l('Categories:') . '</label>
+				<div class="margin-form">
+					<table cellspacing="0" cellpadding="0" class="table" style="width: 600px;">
+						<tr>
+							<th>
+								<input type="checkbox" name="checkme" class="noborder" onclick="processCheckBoxes(this.checked)" />
+							</th>
+							<th>' . $this->l('ID') . '</th>
+							<th>' . $this->l('Name') . '</th>
+						</tr>';
+						
+				$categories = Category::getCategories((int)($cookie->id_lang), false);
+				
+				$indexedCategories = $obj->id ? MoussiqFreeService::getCategories($obj->id) : array();
+						
+				$this->recurseCategoryForInclude((int)(Tools::getValue($this->identifier)), $indexedCategories, $categories, $categories[0][1], 1, $obj->id);
+						
+				echo '
+					</table>
+				</div>';
+				echo '                
+                <label>' . $this->l('Inactive products policy') . '</label>
+                <div class="margin-form">
+                    <select name="export_inactive">
+                        <option value="-1"' . (!$export_inactiveSet ? ' selected="selected"' : '') . '>' . $this->l('Use default settings') . '</option>
+                        <option value="1"' . (($export_inactiveSet === 1) ? ' selected="selected"' : '') . '>' . $this->l('Export') . '</option>
+                        <option value="0"' . (($export_inactiveSet === 0) ? ' selected="selected"' : '') . '>' . $this->l('Do not Export') . '</option>
+                    </select>
+                    <p class="clear">' . $this->l('Choose if you want to export inactive products for this service (overrides default settings).') . '</p>
+                </div>
+
+                <label>' . $this->l('Export products in condition(s)') . '</label>
+                <div class="margin-form">
+                    <select name="condition">
+                        <option value="-1" ' . (!$conditionSet ? ' selected="selected"' : '') . '>' . $this->l('Use default') . '</option>';
+
+                    foreach ($conditions as $condition)
+                    {
+                        echo '<option value="' . $condition['condition'] . '"' . (($conditionSet === $condition['condition']) ? ' selected="selected"' : '') . '>' . $condition['name'] . '</option>';
+                    }
+
+                    echo '
+                    </select>
+                    <p class="clear">' . $this->l('Choose if you want to export products in some conditions for this service (overrides default settings).') . '</p>
+                </div>
+                
+                <label>' . $this->l('Language') . '</label>
+                <div class="margin-form">
+                    <select name="id_lang">
+                        <option value="-1" ' . (!$langSet ? ' selected="selected"' : '') . '>' . $this->l('Use default settings') . '</option>';
+
+                        foreach ($languages as $language)
+                        {
+                            echo '<option value="' . $language['id_lang'] . '"' . (($langSet === intval($language['id_lang'])) ? ' selected="selected"' : '') . '>' . $language['name'] . '</option>';
+                        }
+                    
+        echo '
+                    </select>
+                    <p class="clear">' . $this->l('In what language would you like products to be exported') . '</p>
+                </div>
+				
+                <label>' . $this->l('Customer Group') . '</label>
+                <div class="margin-form">
+                    <select name="id_group">
+                        <option value="-1" ' . (!$groupSet ? ' selected="selected"' : '') . '>' . $this->l('Use default') . '</option>';
+                        foreach ($customerGroups as $customerGroup)
+                        {
+                            echo '<option value="' . $customerGroup['id_group'] . '"' . (($groupSet === intval($customerGroup['id_group'])) ? ' selected="selected"' : '') . '>' . $customerGroup['name'] . '</option>';
+                        }
+
+                    
+        echo '
+                    </select>
+                    <p class="clear">' . $this->l('In what customer groups would you like products to be exported') . '</p>
+                </div>
+                
+                <label>' . $this->l('Delimiter') . '</label>
+                <div class="margin-form">
+                    <input type="text" size="3" name="delimiter" value="' . ($this->getFieldValue($obj, 'delimiter')) . '" />
+                    <p class="clear">' . $this->l('Specify field delimiter for this service. Leave blank to use default delimiter.') . '</p>
+                </div>
+                
+                <label>' . $this->l('Enclosure') . '</label>
+                <div class="margin-form">
+                    <select name="enclosure">
+                        <option value="-1"' . (!$enclosureSet ? ' selected="selected"' : '') . '>' . $this->l('Use default settings') . '</option>
+                        <option value="1"' . (($enclosureSet === 1) ? ' selected="selected"' : '') . '>' . $this->l('Double Quote') . '</option>
+                        <option value="2"' . (($enclosureSet === 2) ? ' selected="selected"' : '') . '>' . $this->l('Single Quote') . '</option>
+                    </select>
+                    <p class="clear">' . $this->l('Field enclosure for CSV data (eg.: "My Product" - double quotes here is an enclosure character)') . '</p>
+                </div>
+                
+                <label>' . $this->l('Generate Header') . '</label>
+                <div class="margin-form">
+                    <select name="header">
+                        <option value="-1"' . (!$headerSet ? ' selected="selected"' : '') . '>' . $this->l('Use default settings') . '</option>
+                        <option value="1"' . (($headerSet === 1) ? ' selected="selected"' : '') . '>' . $this->l('Yes') . '</option>
+                        <option value="0"' . (($headerSet === 0) ? ' selected="selected"' : '') . '>' . $this->l('No') . '</option>
+                    </select>
+                    <p class="clear">' . $this->l('Csv header is the first line that does not include product information, but contains field names, like "Product name", "Product link", etc.') . '</p>
+                </div>
+                
+                <label>' . $this->l('Country') . '</label>
+                <div class="margin-form">
+                    <select name="id_country">
+                        <option value="-1" ' . (!$countrySet ? ' selected="selected"' : '') . '>' . $this->l('Use default') . '</option>';
+        
+        foreach ($countries as $country) 
+        {
+            echo '<option value="' . $country['id_country'] . '"' . (($countrySet === (int)($country['id_country'])) ? ' selected="selected"' : '') . '>' . $country['name'] . '</option>';
+        }
+                    
+                    
+        echo '
+                    </select>
+                    <p class="clear">' . $this->l('This setting overrides default zone selected in module settings') . '</p>
+                </div>
+                
+                <label>' . $this->l('Carrier') . '</label>
+                <div class="margin-form">
+                    <select name="id_carrier">
+                        <option value="-1" ' . (!$carrierSet ? ' selected="selected"' : '')  . '>' . $this->l('Use default') . '</option>';
+        
+        foreach ($carriers as $carrier) 
+        {
+            echo '<option value="' . $carrier['id_carrier'] . '"' . (($carrierSet === (int)($carrier['id_carrier'])) ? ' selected="selected"' : '') . '>' . $carrier['name'] . '</option>';
+        }
+                    
+                    
+        echo '
+                    </select>
+                    <p class="clear">' . $this->l('This setting overrides default carrier selected in module settings') . '</p>
+                </div>';
+				
+		if ($engines && sizeof($engines))
+		{
+			echo '
+                <label>' . $this->l('Export engine') . '</label>
+                <div class="margin-form">
+                    <select name="export_engine">
+			';
+			
+			foreach ($engines as $engine => $engineName)
+			{
+				echo '
+						<option value="' . $engine . '"' . ($export_engine == $engine ? ' selected="selected"' : '') . '>' . $engineName . '</option>';
+			}
+			
+			echo '
+					</select>
+					<p class="clear">' . $this->l('An export engine to be used for this service.') . '</p>
+				</div>';
+		}
+		
+		if ($stores && sizeof($stores))
+		{
+			echo '
+                <label>' . $this->l('Export Store') . '</label>
+                <div class="margin-form">
+                    <select name="id_store">
+			';
+			
+			foreach ($stores as $store)
+			{
+				echo '
+						<option value="' . $store['id_store'] . '"' . ($storeSet == $store['id_store'] ? ' selected="selected"' : '') . '>' . $store['name'] . '</option>';
+			}
+			
+			echo '
+					</select>
+					<p class="clear">' . $this->l('Export product from this store.') . '</p>
+				</div>';
+		}
+
+        if (Shop::isFeatureActive() && $shops && sizeof($shops))
+        {
+            echo '
+                <label>' . $this->l('Export shop') . '</label>
+                <div class="margin-form">
+                    <select name="id_shop">
+			';
+
+            foreach ($shops as $shop)
+            {
+                echo '
+						<option value="' . $shop['id_shop'] . '"' . ($shopSet == $shop['id_shop'] ? ' selected="selected"' : '') . '>' . $shop['name'] . '</option>';
+            }
+
+            echo '
+					</select>
+					<p class="clear">' . $this->l('Export product from this shop.') . '</p>
+				</div>';
+        }
+		
+		echo '
+            </fieldset>
+            
+            <fieldset class="fields availFields">
+                <legend>
+                    <img src="../modules/' . $this->module . '/images/fields.png" />
+                    ' . $this->l('Available fields') . '
+                </legend>
+                <ul class="fields">';
+
+
+                foreach ($fields as $field => $fieldData)
+                {
+                    echo '
+                        <li class="' . $field . ' ' . $fieldData['class'] . '">
+                            <span class="fieldLegendWrapper">
+                                <i class="fieldLegend"></i>
+                            </span>
+                            <span class="fieldFancyName">' . $fieldData['name'] . '</span>
+                        </li>';
+                }
+
+        echo '
+                </ul>
+            </fieldset>
+            
+            <fieldset class="fields targetFields">
+                <legend>
+                    <img src="../modules/' . $this->module . '/images/add.png" />
+                    ' . $this->l('Export fields') . '
+                </legend>
+                
+                <span class="purgeFields">' . $this->l('Remove all fields') . '</span>
+                
+                <ul id="export">';
+
+
+
+                $template = Tools::getValue('template', base64_decode($this->getFieldValue($obj, 'template')));
+                //print_r($template);
+                if (stristr($template, '\"')) {
+                    unset($template);
+                    // old type of templates
+                    //echo "pos = ".stristr($template, '\"').'===';
+                    $template = Tools::getValue('template', stripslashes(base64_decode($this->getFieldValue($obj, 'template'))));
+                    //print_r($template);
+                    //echo '***1***';
+                    $template_str =  stripcslashes(Tools::getValue('template', (base64_decode($obj->template))));
+                } else {
+                    unset($template);
+                    // new type of templates(supporting \n )
+                    $template = Tools::getValue('template', base64_decode($this->getFieldValue($obj, 'template')));
+                    //print_r($template);
+                    //echo '---2---';
+                    $template_str =  addcslashes((Tools::getValue('template', (base64_decode($obj->template)))), "\\");
+                }
+
+
+                if ($template != '') 
+                {
+                    $template = Tools::jsonDecode($template);
+
+
+                    foreach ($template->fields as $field) 
+                    {
+                        $fieldFancyName = stripslashes($field->field);
+                        
+                        if (isset($fields[stripslashes($field->field)])) 
+                        {
+                           $fieldFancyName = $fields[stripslashes($field->field)]['name'];
+                           $fieldClass = $fields[stripslashes($field->field)]['class'];
+                        }
+                        
+                        echo '
+                        <li class="' . stripslashes($field->field) . ' ' . $fieldClass . '">
+							<span class="fieldLegendWrapper">
+								<i class="fieldLegend"></i>
+							</span>
+                            <span class="fieldFancyName">' . $fieldFancyName . '</span>
+                        </li>';
+                    }
+                }
+                
+        echo '
+                </ul>
+                <textarea name="template" id="template">' . $template_str  . '</textarea>
+            </fieldset>
+            <div class="clear">&nbsp;</div>
+
+            <fieldset>
+                <legend>
+                    <img src="../modules/' . $this->module . '/images/save.png" />
+                    ' . $this->l('Save settings') . '
+                </legend>
+                
+				<div class="margin-form">
+					<input type="submit" value="' . $this->l('   Save   ') . '" name="submitAdd' . $this->table . '" class="button" />
+				</div>';
+				
+		if ($obj->id)
+		{
+			echo '
+				<div class="margin-form">
+					<input type="submit" value="' . $this->l('Export this template') . '" class="button" name="createTemplate" />
+				</div>';
+		}
+		
+		echo '
+                <p style="margin-top: 1em;">
+                    
+                <p>
+            </fieldset>
+        </form>
+        <p style="margin-top: 1em;">
+            <a href="' . $url . '"><img src="../img/admin/arrow2.gif" /> ' . $this->l('Back to services list') . '</a>
+        </p>';
+    }
+	
+    public function viewDetails()
+    {
+        global $tab, $cookie, $currentIndex;
+
+        $currentIndex = $_SERVER['SCRIPT_NAME'].(($controller = Tools::getValue('controller')) ? '?controller='.$controller: '');
+
+		$url = $currentIndex . '&token=' . Tools::getAdminTokenLite('AdminMoussiqFree');
+		
+        $obj = $this->loadObject(true);
+
+        if (Tools::isSubmit('csvGen')) 
+        {
+			require_once(dirname(__FILE__) . '/classes/Export.php');
+
+            if ( ! Export::checkDir(dirname(__FILE__) . '/export/')) 
+            {
+				echo Module::displayError($this->l('Your export directory is not writeable'));
+            }
+			else if (is_object($exportEngine = Export::setExportEngine($obj->export_engine, $obj->id)))
+			{
+				$exportEngine->startImport();
+			}
+        }
+
+        echo '
+        <p style="margin-bottom: 1em;">
+            <a href="' . $url . '"><img src="../img/admin/arrow2.gif" /> ' . $this->l('Back to services list') . '</a>
+        </p>';
+        $this->exporterView($obj);
+        echo '
+        <p style="margin-top: 1em;">
+            <a href="' . $url . '"><img src="../img/admin/arrow2.gif" /> ' . $this->l('Back to services list') . '</a>
+        </p>';
+    }
+	
+    public function exporterView($obj)
+    {
+        $fileName  = sha1($obj->name . _COOKIE_KEY_) . '.csv';
+        $fileDir   = dirname(__FILE__) . '/export/';
+        $fileLink  = _PS_BASE_URL_ . _MODULE_DIR_ . $this->module . '/export/' . $fileName;
+        $delimiter = (isset($obj->delimiter) && strlen($obj->delimiter) > 0) ? $obj->delimiter : Configuration::get('EXPORTFREE_DELIMITER');
+        $delimiter = ExportTools::delimiterByKeyWord($delimiter);
+        $enclosure = (isset($obj->enclosure) && strlen($obj->enclosure) > 0) ? $obj->enclosure : Configuration::get('EXPORTFREE_ENCLOSURE');
+        $enclosure = ExportTools::getEnclosureFromId($enclosure);
+        
+        echo '
+        <form method="post">
+            <fieldset>
+                <legend>
+                    ' . $this->l('Service Info') . '
+                </legend>
+                
+                <h2>' . $this->l('Link to CSV File:') . ' </h2>
+                <div class="margin-form">';
+
+                if (file_exists($fileDir . $fileName)) 
+                {
+                    echo '<h3><a style="color: blue;" href="' . $fileLink . '">' . $fileLink . '</a></h3>';
+                    
+                    $fileSize = floatval(filesize($fileDir . $fileName)) / pow(1024, 1);
+                    $fileModified = date ("d/m/Y H:i:s", filemtime($fileDir . $fileName));
+                    echo '<h4>' . $this->l('Size:') . ' <b>' . number_format($fileSize, 2) . ' ' . $this->l('Kb') . '</b></h4>';
+                    echo '<h4>' . $this->l('Last Modified:') . ' <b>' . $fileModified. '</b></h4>';
+                } 
+                else 
+                {
+                    echo '<h2>' . $this->l('CSV file have not been generated yet') . '</h2>';
+                }
+                
+        echo '
+                </div>';
+
+        if (file_exists($fileDir . $fileName)) 
+        {
+            $fileNotTooBig = $fileSize < 1024;
+            echo '<h2>' . $this->l('CSV Contents') . '</h2>';
+            echo '
+            <div style="width: 900px; ' . ($fileNotTooBig ? 'height: 600px; overflow: auto; margin-bottom: 1em;' : '') . '">';
+            
+            if ($fileNotTooBig) 
+            {
+                $index = 0;
+                
+                if (($handle = fopen($fileDir . $fileName, "r")) !== false) 
+                {
+                    $header = intval($obj->header == '' ? Configuration::get('EXPORTFREE_HEADER') : $obj->header);
+                    echo '<table class="table csvContents" cellspacing="0" cellpadding="0">';
+                    
+                    while (($data = fgetcsv($handle, 1000, $delimiter, $enclosure)) !== false) 
+                    {
+                        echo '<tr' . ($index % 2 != 0 ? ' class="alt_row"' : '') . '>';
+                        $num = count($data);
+                        
+                        for ($c = 0; $c < $num; $c++) 
+                        {
+                            if ($index == 0 && $header === 1) 
+                            {
+                                echo '<th>' . $data[$c] . '</th>';
+                            } 
+                            else 
+                            {
+                                echo '<td>' . $data[$c] . '</td>';
+                            }
+                        }
+                        
+                        echo '</tr>';
+                        
+                        $index++;
+                    }
+                    
+                    fclose($handle);
+                    echo '</table>';
+                }
+            } 
+            else 
+            {
+                echo '<h3>' . $this->l('This file is too large to be displayed here, please use the link above to download it and view locally.') . '</h3>';
+            }
+            
+            echo '
+            </div>';
+            
+        } 
+                
+        echo '
+                <center><input type="submit" value="' . $this->l('Generate CSV') . '" name="csvGen" class="button" /></center>
+            </fieldset>
+        </form>';
+    }
+	
+    public function displayImportForm()
+    {
+        echo '
+        <h2>' . $this->l('Import') . '</h2>
+        <form method="post" enctype="multipart/form-data" class="width3">
+            <fieldset>
+                <legend>
+                    <img src="../modules/' . $this->module . '/images/add.png" />
+                    ' . $this->l('Import template') . '
+                </legend>
+                
+                <label>' . $this->l('Template file') . '</label>
+                <div class="margin-form">
+                    <input type="file" name="template" />
+                    <p class="clear">' . $this->l('Please choose the file you recieved from Silbersaiten Mediengruppe') . '</p>
+                </div>
+                
+                <div class="margin-form">
+                    <input type="submit" class="button" name="createServiceFromFile" value="' . $this->l('Add service') . '" />
+                </div>
+            </fieldset>
+        </form>';
+    }
+	
+    public function displayOptionsList()
+    {
+        $this->displayImportForm();
+
+
+        $tab = Tab::getTab($this->context->language->id, $this->id);
+
+        // Retrocompatibility < 1.5.0
+        if (!$this->optionsList && $this->_fieldsOptions)
+        {
+            $this->optionsList = array(
+                'options' => array(
+                    'title' =>	($this->optionTitle) ? $this->optionTitle : $this->l('Options'),
+                    'fields' =>	$this->_fieldsOptions,
+                ),
+            );
+        }
+
+        if (!$this->optionsList)
+            return ;
+
+        echo '<br />';
+        echo '<script type="text/javascript">
+			id_language = Number('.$this->context->language->id.');
+		</script>';
+
+        echo '<form action="'.self::$currentIndex.'&submitOptions'.$this->table.'=1&token='.$this->token.'" method="post" enctype="multipart/form-data">';
+        foreach ($this->optionsList as $category => $categoryData)
+        {
+            $required = false;
+            $this->displayTopOptionCategory($category, $categoryData);
+            echo '<fieldset>';
+
+            // Options category title
+            $legend = '<img src="'.(!empty($tab['module']) && file_exists($_SERVER['DOCUMENT_ROOT']._MODULE_DIR_.$tab['module'].'/'.$tab['class_name'].'.gif') ? _MODULE_DIR_.$tab['module'].'/' : '../img/t/').$tab['class_name'].'.gif" /> ';
+            $legend .= ((isset($categoryData['title'])) ? $categoryData['title'] : $this->l('Options'));
+            echo '<legend>'.$legend.'</legend>';
+
+            // Category fields
+            if (!isset($categoryData['fields']))
+                continue;
+
+            // Category description
+            if (isset($categoryData['description']) && $categoryData['description'])
+                echo '<p class="optionsDescription">'.$categoryData['description'].'</p>';
+
+            foreach ($categoryData['fields'] as $key => $field)
+            {
+                // Field value
+                $value = Tools::getValue($key, Configuration::get($key));
+                if (!Validate::isCleanHtml($value))
+                    $value = Configuration::get($key);
+
+                if (isset($field['defaultValue']) && !$value)
+                    $value = $field['defaultValue'];
+
+                // Check if var is invisible (can't edit it in current shop context), or disable (use default value for multishop)
+                $isDisabled = $isInvisible = false;
+                if (Shop::isFeatureActive())
+                {
+                    if (isset($field['visibility']) && $field['visibility'] > Shop::getContext())
+                    {
+                        $isDisabled = true;
+                        $isInvisible = true;
+                    }
+                    else if (Shop::getContext() != Shop::CONTEXT_ALL && !Configuration::isOverridenByCurrentContext($key)) {
+                        $isDisabled = true;
+                    }
+                }
+
+                // Display title
+                echo '<div style="clear: both; padding-top:15px;" id="conf_id_'.$key.'" '.(($isInvisible) ? 'class="isInvisible"' : '').'>';
+                if ($field['title'])
+                {
+                    echo '<label class="conf_title">';
+
+                    // Is this field required ?
+                    if (isset($field['required']) && $field['required'])
+                    {
+                        $required = true;
+                        echo '<sup>*</sup> ';
+                    }
+                    echo $field['title'].'</label>';
+                }
+
+                echo '<div class="margin-form" style="padding-top:5px;">';
+
+                // Display option inputs
+                $method = 'displayOptionType'.Tools::toCamelCase($field['type'], true);
+                if (!method_exists($this, $method))
+                    $this->displayOptionTypeText($key, $field, $value);//default behavior
+                else {
+                    $this->$method($key, $field, $value);
+                }
+                // Multishop default value
+                /*
+                if (Shop::isFeatureActive() && Shop::getContext() != Shop::CONTEXT_ALL && !$isInvisible)
+                    echo '<div class="preference_default_multishop">
+							<label>
+								<input type="checkbox" name="multishopOverrideOption['.$key.']" value="1" '.(($isDisabled) ? 'checked="checked"' : '').' onclick="checkMultishopDefaultValue(this, \''.$key.'\')" /> '.$this->l('Use default value').'
+							</label>
+						</div>';
+                */
+                // Field description
+                //echo (isset($field['desc']) ? '<p class="preference_description">'.((isset($field['thumb']) AND $field['thumb'] AND $field['thumb']['pos'] == 'after') ? '<img src="'.$field['thumb']['file'].'" alt="'.$field['title'].'" title="'.$field['title'].'" style="float:left;" />' : '' ).$field['desc'].'</p>' : '');
+                echo (isset($field['desc']) ? '<p class="preference_description">'.$field['desc'].'</p>' : '');
+
+                // Is this field invisible in current shop context ?
+                echo ($isInvisible) ? '<p class="multishop_warning">'.$this->l('You cannot change the value of this configuration field in this shop context').'</p>' : '';
+
+                echo '</div></div>';
+            }
+
+            echo '<div align="center" style="margin-top: 20px;">';
+            echo '<input type="submit" value="'.$this->l('   Save   ').'" name="submit'.ucfirst($category).$this->table.'" class="button" />';
+            echo '</div>';
+            if ($required)
+                echo '<div class="small"><sup>*</sup> '.$this->l('Required field').'</div>';
+
+            echo '</fieldset><br />';
+            $this->displayBottomOptionCategory($category, $categoryData);
+        }
+        echo '</form>';
+        
+        //return parent::displayOptionsList();
+    }
+	
+	public function display()
+	{
+		global $cookie;
+		
+		echo '
+		<div class="toolbar-placeholder">
+			<div class="toolbarBox toolbarHead">
+				<div class="pageTitle">
+					<h3 style="font-size: 2em;>
+						<span id="current_obj" style="font-weight: normal;">
+							<span class="breadcrumb item-1 ">'.$this->l('Moussiq Free configuration').'
+							</span>
+						</span>
+					</h3>
+				</div>
+			</div>
+		</div>
+		<div align="right">
+		<b><a href="http://www.silbersaiten.de/prestashop/de/export-moussiq-vorlagen/121-moussiq-exportmodul-fur-produkt-und-preissuchmaschinen.html">'.$this->l('Moussiq PRO Version').'</a></b>
+		</div>
+		';
+
+		if (isset($_GET['view' . $this->table]))
+		{
+			$this->viewDetails();
+		}
+		elseif (isset($_GET['update' . $this->table]) || isset($_GET['add' . $this->table]))
+		{
+		    $this->displayForm();
+		}
+		else
+		{
+			$this->getList((int)$cookie->id_lang, !Tools::getValue($this->table.'Orderby') ? 'last_upd' : NULL, !Tools::getValue($this->table.'Orderway') ? 'DESC' : NULL);
+			$this->displayList();
+			$this->displayOptionsList();
+		}
+	}
+	
+	protected function createTemplateForService($id_service)
+	{
+		global $currentIndex;
+
+        $currentIndex = $_SERVER['SCRIPT_NAME'].(($controller = Tools::getValue('controller')) ? '?controller='.$controller: '');
+
+		$url = $currentIndex . '&token=' . Tools::getAdminTokenLite('AdminMoussiqFree');
+		
+		$obj = new $this->className((int)$id_service);
+		
+		if (Validate::isLoadedObject($obj))
+		{
+			$tpl = '';
+			$path = dirname(__FILE__) . '/templates/';
+			
+			if (( ! file_exists($path) || ! is_dir($path)) && ! mkdir($path, 0777))
+			{
+				$this->_errors[] = $this->l('Please create "templates" directory in your moussique free folder');
+				
+				return false;
+			}
+			elseif ( ! is_writable($path))
+			{
+				$this->_errors[] = $this->l('Your "templates" directory is not writeable.');
+				
+				return false;
+			}
+			
+			$exportFields = array('name', 'template', 'enclosure', 'delimiter', 'header');
+			
+			foreach ($exportFields as $prop)
+			{
+				if ( ! property_exists($obj, $prop))
+				{
+					$this->_errors[] = $this->l('Missing property:') . ' "' . $prop . '"';
+					
+					return false;
+				}
+				
+				$tpl.= base64_encode($prop) . ':' . base64_encode($obj->{$prop}) . "\n";
+			}
+			
+			if ( ! sizeof($this->_errors) && trim($tpl) != '')
+			{
+				$handler = fopen($path . Export::transliterate(str_replace(' ', '_', $obj->name)) . '.mtpl', 'w');
+				
+				if ( ! $handler)
+				{
+					$this->_errors[] = $this->l('Could not create template file');
+					
+					return false;
+				}
+				
+				fwrite($handler, $tpl);
+				
+				fclose($handler);
+				Tools::redirectAdmin($url . '&id_moussiqfree_service=' . $obj->id . '&updatemoussiqfree_service&tplFile=' . Export::transliterate(str_replace(' ', '_', $obj->name)));
+			}
+			else
+			{
+				$this->_errors[] = $this->l('Unable to select necessary template fields');
+				
+				return false;
+			}
+		}
+		
+		$this->_errors[] = $this->l('Unable to load selected service');
+		
+		return false;
+	}
+	
+    protected function createServiceFromTemplate($file)
+    {
+
+        if (empty($file['name']))
+        {
+            $this->_errors[] = $this->l('Please select a file from your computer');
+            
+            return false;
+        }
+        
+        $extension = strrchr($file['name'], '.');
+        
+        if ($extension == '.gz' && !function_exists('gzopen')) 
+        {
+            $this->_errors[] = $this->l('Your server does not support gz functions, please unpack the file locally and upload again');
+            
+            return false;
+        }
+
+        if ($extension == '.mtpl') 
+            $template = file($file['tmp_name'], FILE_SKIP_EMPTY_LINES);
+        elseif ($extension == '.gz') 
+            $template = gzfile($file['tmp_name']);
+        else 
+        {
+            $this->_errors[] = $this->l('Unknown file format');
+            
+            return false;
+        }
+		
+		$defaultLanguage = (int)Configuration::get('PS_LANG_DEFAULT');
+		$defaultCarrier  = 0;
+		$defaultCountry  = (int)Configuration::get('PS_COUNTRY_DEFAULT');
+		$defaultState    = 0;
+        $defaultCondition = 'new:used:refurbished';
+		$defaultStore    = (int)Db::getInstance()->getValue('SELECT `id_store` FROM `' . _DB_PREFIX_ . 'store`');
+		$defaultGroup    = (int)Db::getInstance()->getValue('SELECT `id_group` FROM `' . _DB_PREFIX_ . 'group`');
+		$engines         = self::getExportEnginesForSetup();
+		
+		if ( ! sizeof($engines))
+		{
+            $this->_errors[] = $this->l('Please add export engines first');
+            
+            return false;
+		}
+		
+		$engine = $engines[0]['engine'];
+		
+		if (Country::containsStates($defaultCountry))
+		{
+			$states = State::getStatesByIdCountry($defaultCountry);
+			
+			if (sizeof($states))
+			{
+				$defaultState = (int)$states[0]['id_state'];
+			}
+		}
+		
+		$carriers = Carrier::getCarriers($defaultLanguage, true);
+		
+		if ($carriers && sizeof($carriers))
+		{
+			$defaultCarrier = (int)$carriers[0]['id_carrier'];
+		}
+		
+		$additionalProperties = array(
+			'id_lang'       => $defaultLanguage,
+			'id_country'    => $defaultCountry,
+			'id_state'      => $defaultState,
+			'id_carrier'    => $defaultCarrier,
+			'id_store'      => $defaultStore,
+			'export_engine' => $engine,
+            'condition' => $defaultCondition
+		);
+        if (sizeof($template) > 0) 
+        {
+            $obj = new $this->className();
+            
+            foreach ($template as $line) 
+            {
+                $line   = explode(':', $line);
+                $field  = pSQL(base64_decode($line[0]));
+                
+                if ($field == 'template') 
+                    $line[1] = base64_decode($line[1]);
+                
+                $value = base64_decode($line[1]);
+                //print_r(pSQL(base64_decode($line[1])));
+                //print_r($value);
+				
+				if (property_exists($obj, $field))
+					$obj->{$field} = $value;
+					
+				foreach ($additionalProperties as $prop => $val)
+				{
+					if (property_exists($obj, $prop))
+						$obj->{$prop} = $val;
+				}
+            }
+            
+            if ( ! $obj->save()) 
+            {
+                $this->_errors[] = $this->l('A service could not be added, an error occured during an attemt to copy file data into module');
+            
+                return false; 
+            }
+        }
+    }
+
+	public function postProcess()
+	{
+        if (Tools::isSubmit('createServiceFromFile')) 
+        {
+
+            $this->createServiceFromTemplate($_FILES['template']);
+
+            return ;
+        }
+		
+		if (Tools::getIsset('createTemplate'))
+		{
+			$this->createTemplateForService(Tools::getValue($this->identifier, false));
+		}
+		if (Tools::getIsset('submitAdd' . $this->table))
+		{
+			global $cookie, $currentIndex, $link;
+
+            $currentIndex = $_SERVER['SCRIPT_NAME'].(($controller = Tools::getValue('controller')) ? '?controller='.$controller: '');
+
+			$rules           = call_user_func(array($this->className, 'getValidationRules'), $this->className);
+			$defaultLanguage = new Language((int)(Configuration::get('PS_LANG_DEFAULT')));
+			$languages       = Language::getLanguages(false);
+
+			/* Check required fields */
+			foreach ($rules['required'] AS $field)
+			{
+				if (($value = Tools::getValue($field)) == false AND $value != '0')
+				{
+					if (Tools::getValue('id_'.$this->table) AND $field == 'passwd')
+					{
+						continue;
+					}
+					$this->_errors[] = $this->l('the field').' <b>'.call_user_func(array($this->className, 'displayFieldName'), $field, $this->className).'</b> '.$this->l('is required');
+				}
+			}
+			if ( ! sizeof($this->_errors))
+			{
+				$obj = new $this->className(Tools::getValue('id_moussiqfree_service', null));
+
+
+				foreach ($_POST as $key => $value)
+				{
+					if (property_exists($obj, $key))
+					{
+                        if (($key == 'template') && (get_magic_quotes_gpc() == true)) {
+                            $obj->{$key} = stripslashes($value);
+                        }  else {
+						    $obj->{$key} = $value;
+                        }
+					}
+				}
+				if ( ! $obj->save())
+				{
+					$this->_errors[] = $this->l('Unable to save service');
+				}
+				else
+				{
+					$url = $currentIndex . '&id_moussiqfree_service=' . $obj->id . '&updatemoussiqfree_service&token=' . Tools::getAdminTokenLite('AdminMoussiqFree');
+					
+					Tools::redirectAdmin($url);
+				}
+			}
+		}
+		else
+		{
+			return parent::postProcess();
+		}
+	}
+}
+
+?>

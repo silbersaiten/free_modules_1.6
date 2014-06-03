@@ -1,0 +1,54 @@
+div.widgettooltipContainer {
+    width: 200px;
+    padding: 1em;
+    text-align: left;
+    display: none;
+    position: absolute;
+    border: 1px solid #a6a6a6;
+    border-radius: 5px;
+    background-image: -webkit-gradient(
+        linear,
+        left bottom,
+        left top,
+        color-stop(0.01, rgb(237,237,237)),
+        color-stop(0.51, rgb(250,250,250))
+    );
+    background-image: -moz-linear-gradient(
+        center bottom,
+        rgb(237,237,237) 1%,
+        rgb(250,250,250) 51%
+    );
+    overflow: hidden;
+    box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.4);
+    -webkit-box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.4);
+}
+
+div.widgettooltipContainer div.preload {
+    margin: 0 auto;
+    height: 16px;
+    background: transparent url('preload.gif') 50% 50% no-repeat;
+}
+
+div.widgettooltipContainer h2 {
+    text-transform: none;
+    height: auto;
+    background: transparent;
+    border-bottom: 1px solid;
+    margin: 0;
+    padding: 0;
+}
+
+div.widgettooltipContainer img {
+    background: #eee;
+    border: 1px solid #d2d2d2;
+    margin-top: 5px;
+    padding: 4px;
+}
+
+div.widgettooltipContainer div.descriptionBlock {
+    margin-top: .5em;
+}
+
+div.widgettooltipContainer div.descriptionBlock ul {
+    margin-left: 20px!important;
+}

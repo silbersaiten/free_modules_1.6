@@ -1,0 +1,7 @@
+Hallo {firstname} {lastname},
+
+Ihr Newsletter Abonnement
+
+danke, dass Sie unser Newsletter abonniert haben
+
+{shop_url} Powered by PrestaShop™

@@ -1,0 +1,370 @@
+div#mousiqueWrapper fieldset {
+    background-color: white;
+}
+
+div.cronExp span {
+    display: block;
+}
+
+span#whatSCron {
+    display: inline;
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+span#whatSCron:hover {
+    text-decoration: none;
+}
+
+p#wtfsCron {
+    display: block;
+    background-color: #FFC;
+    border: 1px solid #C93;
+    padding: .5em;
+}
+
+p#wtfsCron span, p#wtfsCron code {
+    display: block;
+}
+
+p#wtfsCron code {
+    font-family: Consolas, Monospace;
+    margin-top: 1em;
+    padding: .5em;
+    border: 1px solid #DFD5C3;
+    background-color: #FFFFF0;
+    color: #3D3D3D;
+}
+
+div.leftSide, div.rightSide {
+    float: left;
+}
+
+div.leftSide {
+    width: 310px;
+}
+
+div.rightSide {
+    width: 400px;
+}
+
+ul#hoursList, ul#minutesList {
+    clear: left;
+} 
+
+div#timeSelect h3 {
+    margin-top: 1em;
+    margin-bottom: .2em;
+}
+
+div#timeSelect h3:first-child {
+    margin-top: 0.2em;
+}
+
+ul.timePickerList {
+    overflow: hidden;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+ul.timePickerList li {
+    float: left;
+    border-radius: 5px;
+    margin: 0 .5em .5em 0;
+    text-align: center;
+    background-color: #f3f3f3;
+    color: #3d3d3d;
+    font-weight: bold;
+    background-image: url(../images/fields_bg.png);
+    background-repeat: no-repeat;
+    background-position: 50% 0;
+}
+
+ul.timePickerList li span {
+    display: block;
+    width: 20px;
+    height: 20px;
+    padding: .1em;
+    font-size: 1em;
+    line-height: 20px;
+    cursor: pointer;
+}
+
+ul#daysList li span {
+    width: 95px;
+    height: 80px;
+    line-height: 80px;
+}
+
+ul.timePickerList li.hovered {
+    background-color: #868686;
+    color: #fff;
+}
+
+ul.timePickerList li.selected {
+    background-color: #91C749;
+    color: #fff;
+}
+
+fieldset.fields, fieldset.zoneSelect, fieldset.carrierSelect {
+    float: left;
+}
+
+fieldset.fields.targetFields, fieldset.carrierSelect {
+    width: 398px;
+}
+
+fieldset.fields.availFields, fieldset.zoneSelect {
+    width: 454px; 
+    margin-right: 1em;
+}
+
+ul#export, ul.fields {
+    margin: 0;
+    padding: 0;
+}
+
+ul#export {
+    list-style-type: none;
+    overflow:auto;
+    height: 60px;
+}
+
+textarea#template {
+    display: none;
+}
+
+ul#export li, ul.fields li {
+    font-family: "Trebuchet MS", Helvetica, Jamrul, sans-serif;
+    display: block;
+    padding: 0.5em;
+    margin-bottom: .5em;
+    color: #333;
+    background-color: #fff;
+    background-image: url(../images/fields_bg.png);
+    background-repeat: no-repeat;
+    background-position: 50% 0;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+ul#export li:hover, ul.fields li:hover {
+    cursor: move;
+}
+
+ul#export li {
+    width: 368px;
+}
+
+ul#export li div.generalFieldInfo {
+    overflow: hidden;
+    font-weight: bold;
+}
+
+ul#export li div.generalFieldInfo span.ownName {
+    font-style: italic;
+}
+
+ul#export li div.fieldSettings {
+    border-radius: 5px;
+    background: #fff url(../images/settings_bg.png) repeat-x top left;
+    text-shadow: none;
+    display: none;
+    margin-top: 1em;
+    overflow: hidden;
+    color: #333;
+}
+
+ul#export li div.fieldSettings p {
+    overflow: hidden;
+    margin-bottom: .5em;
+}
+
+ul#export li div.fieldSettings label {
+    padding-top: .4em;
+    font-weight: normal;
+}
+
+ul#export li div.fieldSettings input {
+    border: 1px solid #d8d8d8;
+    float: left;
+    margin: .3em .5em 0 .5em;
+    height: 16px;
+}
+
+.field_placeholder {
+    background-color: #FFF6CF; 
+    border: 1px solid #DFD5C3;
+}
+
+ul.fields li {
+    width: 45%;
+    margin: 0 .5em .5em 0em;
+    float: left;
+    display: inline;
+    overflow: hidden;
+}
+
+ul.fields li:nth-child(even) {
+    margin-right: 0;
+}
+
+ul.fields li span, ul#export li span {
+    display: block;
+    float: left;
+}
+
+ul.fields li span.fieldLegendWrapper, ul#export li span.fieldLegendWrapper {
+    border: 1px solid #ddd;
+    background: white;
+    width: 10px;
+    height: 10px;
+    padding: 2px;
+    margin-right: .5em;
+}
+
+ul.fields li i.fieldLegend, ul#export li i.fieldLegend {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #ddd;
+}
+
+ul.fields li.priceRel i.fieldLegend, ul#export li.priceRel i.fieldLegend {
+    background-color: #ef4500;
+    color: #fff;
+}
+
+ul.fields li.taxRel i.fieldLegend, ul#export li.taxRel i.fieldLegend {
+    background-color: #ef0043;
+    color: #fff;
+}
+
+ul.fields li.prodRel i.fieldLegend, ul#export li.prodRel i.fieldLegend {
+    background-color: #00abef;
+    color: #fff;
+}
+
+ul.fields li.metaRel i.fieldLegend, ul#export li.metaRel i.fieldLegend {
+    background-color: #ef5e00;
+    color: #fff;
+}
+
+ul.fields li.shippingRel i.fieldLegend, ul#export li.shippingRel i.fieldLegend {
+    background-color: #ef00ab;
+    color: #fff;
+}
+
+ul.fields li.catRel i.fieldLegend, ul#export li.catRel i.fieldLegend {
+    background-color: #91c749;
+    color: #fff;
+}
+
+ul.fields li.manRel i.fieldLegend, ul#export li.manRel i.fieldLegend {
+    background-color: #0d6f42;
+    color: #fff;
+}
+
+ul.fields li.supRel i.fieldLegend, ul#export li.supRel i.fieldLegend {
+     background-color: #fcaf3e;
+     color: #fff;
+ }
+
+ul.fields li.attrRel i.fieldLegend, ul#export li.attrRel i.fieldLegend {
+    background-color: #7f3efc;
+    color: #fff;
+}
+ul.fields li.featRel i.fieldLegend, ul#export li.featRel i.fieldLegend {
+    background-color: #fcb868;
+    color: #fff;
+}
+
+ul.fields li.specialRel i.fieldLegend, ul#export li.specialRel i.fieldLegend {
+    background-color: #d3d7cf;
+    color: #333;
+}
+
+
+span.controls, span.closeSettings, span.purgeFields {
+    cursor: pointer;
+}
+
+ul#export li span.controls {
+    display: block;
+    float: right;
+    width: 20px;
+    height: 20px;
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+}
+
+span.closeSettings {
+    padding-left: 20px;
+    display: block;
+    float: right;
+    margin: 1em;
+    background: transparent url('../images/hide.png') no-repeat 0% 50%;
+    color: blue;
+    text-decoration: underline;
+    text-shadow: none;
+}
+
+span.closeSettings:hover, span.purgeFields:hover {
+    text-decoration: none;
+}
+
+span.purgeFields {
+    padding-left: 20px;
+    display: block;
+    margin: .5em 0;
+    background: transparent url('../images/delete.png') no-repeat 0% 50%;
+    color: blue;
+    text-decoration: underline;
+}
+
+span.controls.delete {
+    background-image: url('../images/delete.png');  
+}
+
+span.controls.setup {
+    background-image: url('../images/edit.png');  
+}
+
+fieldset#mousiqueSettings {
+    display: none;
+}
+
+span#toggleMousiqueSettings {
+    display: block;
+    margin-bottom: 1em;
+    cursor: pointer;
+}
+span#toggleAttr {
+    display: block;
+    margin-bottom: 1em;
+    cursor: pointer;
+}
+span#toggleFeat {
+    display: block;
+    margin-bottom: 1em;
+    cursor: pointer;
+}
+
+span#toggleMousiqueSettings img {
+   float: left; 
+   margin-right: 5px; 
+}
+
+table.csvContents td {
+    *width: 40px;
+    min-width: 40px;
+    white-space: nowrap;
+    border-right: 1px solid #F0EADA;
+}
+
+table.csvContents td:last-child {
+    border-left: 0px;
+}

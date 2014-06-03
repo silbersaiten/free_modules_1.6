@@ -1,0 +1,8 @@
+Hi
+
+Thank you for taking interest in our news!
+
+To activate your request, please follow this link:
+{activation_link}
+
+{shop_url} powered by PrestaShop™

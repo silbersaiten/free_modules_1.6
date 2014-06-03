@@ -1,0 +1,7 @@
+﻿Hallo {firstname} {lastname},
+
+Ihr Newsletter Abonnement
+
+danke, dass Sie unser Newsletter abonniert haben
+
+{mail_footer_html}
