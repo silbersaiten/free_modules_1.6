@@ -1,7 +1,0 @@
-﻿Hallo {firstname} {lastname},
-
-Ihr Newsletter Abonnement
-
-Für Ihr Newsletter Abonnement erhalten Sie folgenden Rabatt: {discount}
-
-{mail_footer_html}
