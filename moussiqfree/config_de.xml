@@ -2,10 +2,10 @@
 <module>
 	<name>moussiqfree</name>
 	<displayName><![CDATA[Moussiq FREE]]></displayName>
-	<version><![CDATA[1.5.4.1]]></version>
-	<description><![CDATA[Exports your products into a csv file for various price comparison engines]]></description>
-	<author><![CDATA[]]></author>
-	<tab><![CDATA[Silbersaiten]]></tab>
+	<version><![CDATA[1.6.0]]></version>
+	<description><![CDATA[Exportiert Ihre Produkte in eine CSV-Datei f&uuml;r verschiedene Preisvergleichsmaschinen]]></description>
+	<author><![CDATA[Silbersaiten]]></author>
+	<tab><![CDATA[frontend_features]]></tab>
 	<is_configurable>1</is_configurable>
 	<need_instance>1</need_instance>
 	<limited_countries></limited_countries>

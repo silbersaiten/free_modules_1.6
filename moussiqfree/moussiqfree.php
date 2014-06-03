@@ -21,10 +21,11 @@ class MoussiqFree extends Module
     
     public function __construct()
     {
-        $this->name    = 'moussiqfree';
-        $this->tab     = 'export';
-		$this->author  = 'silbersaiten';
-        $this->version = '2.0';
+        $this->name		= 'moussiqfree';
+		$this->tab		= 'frontend_features';
+		$this->version	= '1.6.0';
+		$this->author	= 'Silbersaiten';
+        $this->module_key = "165500ec94ed911a9e584c098e0ebe0b";
 		
         parent::__construct();
         

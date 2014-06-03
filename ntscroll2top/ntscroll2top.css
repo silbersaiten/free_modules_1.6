@@ -1,0 +1,15 @@
+div#scroll2Top a{
+    display:none; 
+    background: url("img/scroll2top.png") no-repeat scroll center center rgba(0, 0, 0, .3);
+    width:100px;
+    height:40px;
+    position:fixed;
+    bottom:30px;
+    right:30px;
+    -moz-opacity:0.3;
+    -webkit-opacity:0.3;
+    opacity:0.3;
+}
+div#scroll2Top a:hover{
+    opacity:0.9;
+}

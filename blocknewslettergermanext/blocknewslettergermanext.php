@@ -22,6 +22,8 @@ class BlocknewsletterGermanext extends Module
 		global $cookie;
 		
         $this->name = 'blocknewslettergermanext';
+		$this->version = '1.6';
+		$this->author = 'silbersaiten';
         $this->tab  = 'Silbersaiten';
         
         parent::__construct();
