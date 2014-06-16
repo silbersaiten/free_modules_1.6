@@ -1510,11 +1510,11 @@ class AdminMoussiqFree extends AdminTab
 		</div>
 		';
 
-		if (isset($_GET['view' . $this->table]))
+		if (Tools::getIsset('view' . $this->table))
 		{
 			$this->viewDetails();
 		}
-		elseif (isset($_GET['update' . $this->table]) || isset($_GET['add' . $this->table]))
+		elseif (Tools::getIsset('update' . $this->table) || Tools::getIsset('add' . $this->table))
 		{
 		    $this->displayForm();
 		}
