@@ -8,8 +8,7 @@ abstract class Export
     protected        $_header;
     protected static $_serviceData;
     protected static $_billingMode;
-    protected static $_shippingRequirements;
-    protected static $_shippingData;
+    protected static $_shippingCarrierData;
     protected static $_specificPrices;
     protected static $_productPriorities;
     
@@ -29,6 +28,7 @@ abstract class Export
     protected static $_exportLanguage;
     protected static $_carrierId;
     protected static $_carrierTax;
+    protected static $_carrierMethod;
     protected static $_zone;
     protected static $_sef;
     private static $_exportLanguageObj;
@@ -103,14 +103,15 @@ abstract class Export
         self::$_exportLanguage       = (int)self::$_serviceData['id_lang'];
         self::$_carrierId            = (int)self::$_serviceData['id_carrier'];
         self::$_carrierTax           = self::getShippingTax(self::$_carrierId, self::$_exportShop);
+        $carrier = new Carrier((int)self::$_carrierId);
+        self::$_carrierMethod        = $carrier->getShippingMethod();
         self::$_exportCountry        = (int)self::$_serviceData['id_country'];
         self::$_exportCurrency       = (int)self::getCurrencyByCountry(self::$_exportCountry);
         self::$_exportState          = (int)self::$_serviceData['id_state'];
         self::$_exportCondition      = self::$_serviceData['condition'];
         self::$_zone                 = Country::getIdZone(self::$_exportCountry);
         self::$_billingMode          = (int)(Configuration::get('PS_SHIPPING_METHOD'));
-        self::$_shippingRequirements = self::getFreeShippingRequirements(self::$_billingMode);
-        self::$_shippingData         = self::collectShippingData(self::$_billingMode);
+        self::$_shippingCarrierData  = self::getCarrierShippingRanges();
         self::$_existingPictures     = self::getExistingPictures();
         self::$_existingCategories   = self::getExistingCategories(self::$_exportLanguage);
         self::$_specificPrices       = self::getSpecificPrices(self::$_exportShop);
@@ -365,12 +366,9 @@ abstract class Export
                     $taxedReduction = ! $withTax ? self::getPriceWithTax($reductionPrice, $taxRate) : $reductionPrice;
                 }
 
-                $shippingPrice = self::calculateShippingPrice(
-                    self::$_carrierId,
-                    self::$_zone,
-                    self::$_billingMode == 0 ? ($taxedPrice - $reductionPrice) : $product['weight'],
-                    self::$_shippingRequirements,
-                    self::$_shippingData
+                $shippingPrice = self::calculateCarrierShippingPrice(
+                    ($taxedPrice - $reductionPrice),
+                    $product['weight']
                 );
                 
                 $shippingPrice = $withTax ? self::getPriceWithTax($shippingPrice, self::$_carrierTax) : $shippingPrice;
@@ -434,8 +432,7 @@ abstract class Export
                             $link = self::getProductLink(
                                 $product,
                                 self::$_exportShop,
-                                $context,
-                                self::$_exportLanguage
+                                $context
                             );
                             
                             $preparedValue['value'] = $link;
@@ -818,7 +815,7 @@ abstract class Export
      *
      * @return string
      */
-    static public function getProductLink($product, $id_shop = null, $context = false, $id_lang=null) {
+    static public function getProductLink($product, $id_shop = null, $context = false) {
         if ( ! $context) {
             $context = Context::getContext();
         }
@@ -827,62 +824,38 @@ abstract class Export
 
         if (Configuration::get('PS_MULTISHOP_FEATURE_ACTIVE') && $id_shop !== null) {
             $shop = new Shop($id_shop);
-        }
-        else {
+        } else {
             $shop = $context->shop;
         }
-        $force_routes = (bool)Configuration::get('PS_REWRITING_SETTINGS');
-
-        $base = 'http://' . $shop->domain . $shop->getBaseURI();
-
-        if ((!$force_routes && in_array($id_shop, array($context->shop->id,  null))) ||
-            !Language::isMultiLanguageActivated($id_shop) || !(int)Configuration::get('PS_REWRITING_SETTINGS', null, null, $id_shop)) {
-            $base.= '';
-        } else {
-            $base.= self::$_exportLanguageObj->iso_code . '/';
-        }
-        //$base.= self::$_exportLanguageObj->iso_code . '/';
-
-        $params = array();
-        $params['id'] = $product['id_product'];
-        $params['rewrite'] = $product['link_rewrite'];
-        $params['ean13'] = $product['ean13'];
-        $params['category'] = Category::getLinkRewrite((int)$product['id_category_default'], (int)$id_lang);//Tools::str2url($product['categories'][$product['id_category_default']]);
-
-        return $base.$dispatcher->createUrl('product_rule', self::$_exportLanguageObj->id, $params, $force_routes, '', $id_shop);
+        return $context->link->getProductLink($product['id_product_orig'], null, null, null, self::$_exportLanguageObj->id, $id_shop, $product['id_product_attribute']);
     }
-    
-    
-    /*
-     * Returns product shipping price, based on it's price or weight
-     *
-     * @access public
-     *
-     * @scope  static
-     *
-     * @param  integer  $carrier        - Carrier id
-     * @param  integer  $zone           - Zone id
-     * @param  float    $unit           - Product's price or weight value
-     * @param  float    $freeShipping   - "Free shipping starts at" value
-     * @param  array    $priceRanges    - Shipping ranges array
-     *
-     * @return float
-     */
-    static public function calculateShippingPrice($carrier, $zone, $unit, $freeShipping, $priceRanges)
-    {
-        $unit = (float)($unit);
 
-        $carrierRanges = isset($priceRanges[$carrier][$zone]) ? $priceRanges[$carrier][$zone] : null;
-        
-        if (( ! $freeShipping === false && $unit > $freeShipping) || ! isset($carrierRanges)/* || $unit == 0*/)
-        {
-            return 0;
+
+    static public function calculateCarrierShippingPrice($price, $weight)
+    {
+        if (self::$_carrierMethod == Carrier::SHIPPING_METHOD_WEIGHT) {
+            $freeShipping = self::getFreeWeightShippingRequirements();
+
+            if ( ! $freeShipping === false && $weight > $freeShipping) {
+                return 0;
+            }
+
+            foreach(self::$_shippingCarrierData as $range)
+                if ($weight >= $range['from'] && $weight < $range['to'])
+                    return (float)($range['price']);
         }
-        
-        foreach($carrierRanges as $range) 
-            if ($unit >= $range['from'] && $unit < $range['to'])
-                return (float)($range['price']);
-        
+        if (self::$_carrierMethod == Carrier::SHIPPING_METHOD_PRICE) {
+            $freeShipping = self::getFreePriceShippingRequirements();
+
+            if ( ! $freeShipping === false && $price > $freeShipping) {
+                return 0;
+            }
+
+            foreach(self::$_shippingCarrierData as $range)
+                if ($price >= $range['from'] && $price < $range['to'])
+                    return (float)($range['price']);
+        }
+
         return 0;
     }
     
@@ -948,7 +921,18 @@ abstract class Export
         
         return $result > 0 ? floatval($result) : false;
     }
-    
+
+    static public function getFreePriceShippingRequirements()
+    {
+        $result = Configuration::get('PS_SHIPPING_FREE_PRICE');
+        return $result > 0 ? floatval($result) : false;
+    }
+
+    static public function getFreeWeightShippingRequirements()
+    {
+        $result = Configuration::get('PS_SHIPPING_FREE_WEIGHT');
+        return $result > 0 ? floatval($result) : false;
+    }
     
     /*
      * Collects all existing categories with names in given language
@@ -1325,43 +1309,28 @@ abstract class Export
         }
         return $prepared;
     }
-    
-    /*
-     * Uses getShippingRanges method to collect neccessary shipping information.
-     * (eg. shipping price range or weight range)
-     *
-     * @access public
-     *
-     * @scope  static
-     *
-     * @param  integer  $billing        - 0 for price range or 1 for weight range
-     *
-     * @return array
-     */
-    static public function collectShippingData($billing)
+
+    static private function getCarrierShippingRanges()
     {
-        return self::getShippingRanges($billing == 0 ? 'range_price' : 'range_weight');
-    }
-    
-    
-    /*
-     * Collect shipping price/weight ranges.
-     *
-     * @access private
-     *
-     * @scope  static
-     *
-     * @param  string   $table          - Table from which to select the data.
-     *                                    Possible values: 'range_price' and 
-     *                                    'range_weight'
-     *
-     * @return array
-     */
-    static private function getShippingRanges($table)
-    {
-        if ( ! in_array($table, array('range_price', 'range_weight'))) 
+        $carrier = new Carrier((int)self::$_carrierId);
+
+        // Get only carriers that are compliant with shipping method
+        if (($carrier->getShippingMethod() == Carrier::SHIPPING_METHOD_WEIGHT && $carrier->getMaxDeliveryPriceByWeight((int)self::$_zone) === false)
+            || ($carrier->getShippingMethod() == Carrier::SHIPPING_METHOD_PRICE && $carrier->getMaxDeliveryPriceByPrice((int)self::$_zone) === false))
+        {
             return array();
-        
+        }
+
+        if ($carrier->getShippingMethod() == Carrier::SHIPPING_METHOD_WEIGHT) {
+            $table = 'range_weight';
+        }
+        if ($carrier->getShippingMethod() == Carrier::SHIPPING_METHOD_PRICE) {
+            $table = 'range_price';
+        }
+
+        if ( ! in_array($table, array('range_price', 'range_weight')))
+            return array();
+
         $sql = '
         SELECT d.`id_' . $table . '` ,
                d.`id_carrier`        ,
@@ -1370,30 +1339,31 @@ abstract class Export
                r.`delimiter1`        ,
                r.`delimiter2`
         FROM `' . _DB_PREFIX_ . 'delivery` d
-        
+
             LEFT JOIN `' . _DB_PREFIX_ . $table . '` r
             ON  r.`id_' . $table . '` = d.`id_' . $table . '`
-            
-        WHERE (
+
+        WHERE
                 d.`id_' . $table . '` IS NOT NULL
             AND d.`id_' . $table . '` != 0
             AND d.price > 0
-            )';
-            
+            AND d.id_carrier = '.(int)self::$_carrierId.'
+            AND d.id_zone = '.(int)self::$_zone;
+
         $result = Db::getInstance()->ExecuteS($sql);
-        
+
         $priceRanges = array();
-        
+
         $i = 0;
-        foreach ($result as $range) 
+        foreach ($result as $range)
         {
-            $priceRanges[$range['id_carrier']][$range['id_zone']][$i]['price'] = $range['price'];
-            $priceRanges[$range['id_carrier']][$range['id_zone']][$i]['from']  = $range['delimiter1'];
-            $priceRanges[$range['id_carrier']][$range['id_zone']][$i]['to']    = $range['delimiter2'];
-            
+            $priceRanges[$i]['price'] = $range['price'];
+            $priceRanges[$i]['from']  = $range['delimiter1'];
+            $priceRanges[$i]['to']    = $range['delimiter2'];
+
             $i++;
         }
-        
+
         return $priceRanges;
     }
     
