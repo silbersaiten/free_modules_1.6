@@ -8,7 +8,7 @@ class NTScroll2Top extends Module
 	private $_html = '';
 	private $_postErrors = array();
 
-	function __construct()
+	public function __construct()
 	{
 		$this->name = 'ntscroll2top';
 		$this->tab = 'front_office_features';
@@ -22,7 +22,7 @@ class NTScroll2Top extends Module
 		$this->description = $this->l('Displays scroll button to top on bottom of page.');
 	}
 
-	function install()
+	public function install()
 	{
 		if (!parent::install() || !$this->registerHook('displayFooter') || !$this->registerHook('header'))
 			return false;
@@ -37,12 +37,12 @@ class NTScroll2Top extends Module
 
 	public function hookHeader($params)
 	{
-		$this->context->controller->addCSS(($this->_path).'ntscroll2top.css', 'all');
-        $this->context->controller->addJS(($this->_path).'ntscroll2top.js', 'all');
+		$this->context->controller->addCSS(($this->_path).'css/ntscroll2top.css', 'all');
+        $this->context->controller->addJS(($this->_path).'js/ntscroll2top.js', 'all');
 	}
 
 	public function hookDisplayFooter($params)
 	{
-		return $this->display(__FILE__, 'ntscroll2top.tpl');
+		return $this->display(__FILE__, 'views/templates/hook/ntscroll2top.tpl');
 	}
 }

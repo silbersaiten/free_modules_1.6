@@ -1,6 +1,6 @@
 div#scroll2Top a{
     display:none; 
-    background: url("img/scroll2top.png") no-repeat scroll center center rgba(0, 0, 0, .3);
+    background: url("../img/scroll2top.png") no-repeat scroll center center rgba(0, 0, 0, .3);
     width:100px;
     height:40px;
     position:fixed;
