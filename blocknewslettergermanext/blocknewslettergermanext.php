@@ -19,12 +19,10 @@ class BlocknewsletterGermanext extends Module
     
     public function __construct()
     {
-		global $cookie;
-		
         $this->name = 'blocknewslettergermanext';
 		$this->version = '1.6';
 		$this->author = 'silbersaiten';
-        $this->tab  = 'Silbersaiten';
+        $this->tab  = 'front_office_features';
         
         parent::__construct();
         
@@ -39,9 +37,10 @@ class BlocknewsletterGermanext extends Module
         $this->_postValid = array();
         
         // Getting data...
-        $_countries = Country::getCountries((int)$cookie->id_lang);
+        $_countries = Country::getCountries((int)$this->context->cookie->id_lang);
 
         // ...formatting array
+        $countries = array();
         $countries[0] = $this->l('All countries');
 		
         foreach ($_countries as $country)
@@ -253,7 +252,7 @@ class BlocknewsletterGermanext extends Module
 			{
                 $this->_html .= $this->displayError($this->l('No customers were found with these filters !'));
 			}
-            elseif ($fd = @fopen(dirname(__FILE__) . '/export/' . strval(preg_replace('#\.{2,}#', '.', Tools::getValue('action'))) . '_' . $this->_file, 'w'))
+            elseif ($fd = @fopen(dirname(__FILE__) . '/export/' . ((string)preg_replace('#\.{2,}#', '.', Tools::getValue('action'))) . '_' . $this->_file, 'w'))
             {
                 foreach ($result as $tab)
 				{
@@ -264,7 +263,7 @@ class BlocknewsletterGermanext extends Module
                 $this->_html.= $this->displayConfirmation(
                 $this->l('The .CSV file has been successfully exported').
                 ' (' . $nb . ' ' . $this->l('customers found') . ')<br />> 
-                <a href="../modules/' . $this->name . '/export/' . strval(Tools::getValue('action')) . '_' . $this->_file . '"><b>' . $this->l('Download the file') . ' ' . $this->_file . '</b></a>
+                <a href="../modules/' . $this->name . '/export/' . ((string)Tools::getValue('action')) . '_' . $this->_file . '"><b>' . $this->l('Download the file') . ' ' . $this->_file . '</b></a>
                 <br />
                 <ol style="margin-top: 10px;">
                     <li style="color: red;">' . $this->l('WARNING: If you try to open this the .csv file with Excel, do no forget to choose UTF-8 encoding or you\'ll may see strange characters') . '</li>
@@ -272,7 +271,7 @@ class BlocknewsletterGermanext extends Module
             }
             else
 			{
-                $this->_html .= $this->displayError($this->l('Error: cannot write to') . ' ' . dirname(__FILE__) . '/' . strval(Tools::getValue('action')) . '_' . $this->_file . ' !');
+                $this->_html .= $this->displayError($this->l('Error: cannot write to') . ' ' . dirname(__FILE__) . '/' . ((string)Tools::getValue('action')) . '_' . $this->_file . ' !');
 			}
         }
         
@@ -647,13 +646,11 @@ class BlocknewsletterGermanext extends Module
             
             if ($requireActivation) 
             {
-                global $cookie;
-                
                 if ($registerStatus == -2) 
                 {
                     if ($this->deleteRequest($email))
 					{
-                        return $this->registerRequest($email, $_SERVER['REMOTE_ADDR'], (int)($cookie->id_guest));
+                        return $this->registerRequest($email, $_SERVER['REMOTE_ADDR'], (int)($this->context->cookie->id_guest));
 					}
                         
                     $this->error = $this->l('Could not delete your previous subscription request, please contact administrator');
@@ -662,7 +659,7 @@ class BlocknewsletterGermanext extends Module
                 } 
                 else
 				{
-                    return $this->registerRequest($email, $_SERVER['REMOTE_ADDR'], (int)($cookie->id_guest));
+                    return $this->registerRequest($email, $_SERVER['REMOTE_ADDR'], (int)($this->context->cookie->id_guest));
 				}
             } 
             else 
@@ -670,9 +667,7 @@ class BlocknewsletterGermanext extends Module
                 if ($registerStatus == self::NOT_REGISTERED_CUSTOMER) 
                 {
                     /* Unregistered user */
-                    global $cookie;
-                    
-                    return $this->addUnregisteredUser($email, $_SERVER['REMOTE_ADDR'], (int)($cookie->id_guest));
+                    return $this->addUnregisteredUser($email, $_SERVER['REMOTE_ADDR'], (int)($this->context->cookie->id_guest));
                 }
                 elseif($registerStatus == self::REGISTERED_NOT_SUBSCRIBED)
 				{
@@ -686,12 +681,10 @@ class BlocknewsletterGermanext extends Module
  
     private function sendVoucher($email)
     {
-        global $cookie;
-  
         if ($discount = Configuration::get('NWGN_VOUCHER_CODE'))
 		{
             return Mail::send(
-				(int)$cookie->id_lang,
+				(int)$this->context->cookie->id_lang,
 				'newsletter_voucher',
 				$this->l('Newsletter voucher'),
 				array('{discount}' => $discount),
@@ -943,8 +936,6 @@ class BlocknewsletterGermanext extends Module
 	
 	public function ajaxCall($params)
 	{
-		global $smarty, $cookie;
-		
         $requireActivation = (int)(Configuration::get('NWGN_ACTIVATION_EMAIL')) == 1 ? true : false;
 		$this->newsletterRegistration($params);
 
@@ -966,7 +957,7 @@ class BlocknewsletterGermanext extends Module
 					'newsletter_conf',
 					$this->l('Newsletter confirmation'),
 					array(),
-					pSQL($email),
+					pSQL(Tools::getValue('nw_email')),
 					NULL,
 					NULL,
 					NULL,
@@ -983,10 +974,8 @@ class BlocknewsletterGermanext extends Module
 		}
 	}
  
-    function hookLeftColumn($params)
+    public function hookLeftColumn($params)
     {
-        global $smarty, $cookie;
-		
         $requireActivation = (int)(Configuration::get('NWGN_ACTIVATION_EMAIL')) == 1 ? true : false;
 		$email = Tools::getValue('nw_email', false);
 		
@@ -995,7 +984,7 @@ class BlocknewsletterGermanext extends Module
             $this->newsletterRegistration($_POST);
    
             if ($this->error)
-                $smarty->assign(
+                $this->context->smarty->assign(
 					array(
 						'color'           => 'red',
 						'msg'             => $this->error,
@@ -1024,8 +1013,8 @@ class BlocknewsletterGermanext extends Module
 						dirname(__FILE__).'/mails/'
 					);
                 }
-    
-                $smarty->assign(
+
+                $this->context->smarty->assign(
 					array(
 						'color' => 'green',
 						'msg' => $this->valid,
@@ -1034,14 +1023,14 @@ class BlocknewsletterGermanext extends Module
 				);
             }
         }
-  
-        $smarty->assign(
+
+        $this->context->smarty->assign(
 			array(
 				'this_path' => $this->_path
 			)
 		);
 		
-		return $this->display(__FILE__, 'blocknewslettergermanext.tpl');
+		return $this->display(__FILE__, 'views/templates/hook/blocknewslettergermanext.tpl');
     }
     
 	public function footer($params)
@@ -1052,16 +1041,15 @@ class BlocknewsletterGermanext extends Module
 
     public function hookHeader($params)
     {
-        global $smarty;
-		
-		$smarty->assign('nlGnactivation', false);
+
+        $this->context->smarty->assign('nlGnactivation', false);
 		
 		$this->context->controller->addJqueryPlugin('fancybox');
-		$this->context->controller->addCSS($this->_path . 'blocknewslettergermanext.css', 'all');
+		$this->context->controller->addCSS($this->_path . 'css/blocknewslettergermanext.css', 'all');
 		
         if ($hash = Tools::getValue('newsletteractivate'))
 		{
-			$smarty->assign('nlGnactivation', true);
+            $this->context->smarty->assign('nlGnactivation', true);
 			
             if ($requestData = $this->selectSubscriptionRequestDataByHash($hash))
 			{
@@ -1077,7 +1065,7 @@ class BlocknewsletterGermanext extends Module
 			
             if ($this->error)
 			{
-                $smarty->assign(array(
+                $this->context->smarty->assign(array(
 					'type' => 'error',
 					'msg'  => $this->error)
 				);
@@ -1100,8 +1088,8 @@ class BlocknewsletterGermanext extends Module
 						dirname(__FILE__).'/mails/'
 					);
                 }
-				
-                $smarty->assign(
+
+                $this->context->smarty->assign(
 					array(
 						'type' => 'success',
 						'msg'  => $this->valid
@@ -1110,14 +1098,12 @@ class BlocknewsletterGermanext extends Module
             }
         }
 		
-		return $this->display(__FILE__, 'header.tpl');
+		return $this->display(__FILE__, 'views/templates/hook/header.tpl');
     }
  
  
     public function confirmation()
     {
-        global $smarty;
-		
         return $this->display(__FILE__, 'templates/newslettergermanext.tpl');
     }
  
