@@ -1230,35 +1230,56 @@ abstract class Export
     
     public static function getProductSpecificPrice($id_product, $id_shop, $id_currency, $id_country, $id_group)
     {
-        if (array_key_exists($id_product, self::$_specificPrices))
-        {
-            $scores = array();
-            $priorities = self::getProductPriority($id_product);
+		if (array_key_exists($id_product, self::$_specificPrices))
+		{
+			$scores = array();
+			$priorities = self::getProductPriority($id_product);
 
-            foreach (self::$_specificPrices[$id_product] as $key => $value)
-            {
-                $score = 0;
-                
-                if (self::$_exportStartTime >= strtotime($value['from']) && self::$_exportStartTime <= strtotime($value['to']))
-                    $score+=1;
-                
-                foreach (($priorities) as $k => $field)
-                    if ((int)${$field} == (int)$value[$field])
-                        $score+= pow(2, $k + 1);
-                
-                $scores[$key] = $score;
-            }
-            
-            if ( ! sizeof($scores))
-                return false;
-            
-            
-            $max = (array_keys($scores, max($scores)));
-            
-            return self::$_specificPrices[$id_product][$max[0]];
-        }
-        
-        return false;
+			foreach (self::$_specificPrices[$id_product] as $key => $value)
+			{
+				$score = 0;
+
+				if ((($value['from'] != '0000-00-00 00:00:00' && self::$_exportStartTime >= strtotime($value['from'])) ||
+						$value['from'] == '0000-00-00 00:00:00')  &&
+
+					(($value['to'] != '0000-00-00 00:00:00' && self::$_exportStartTime <= strtotime($value['to'])) ||
+						$value['to'] == '0000-00-00 00:00:00') ){
+					$score+=1;
+				}
+
+				if ($value['from_quantity'] >= 0 && $value['from_quantity'] <= 1) {
+					$score+=1;
+				}
+
+				if ($id_product_attribute > 0 && $value['id_product_attribute'] == $id_product_attribute) {
+					$score+=1;
+				} elseif ($id_product_attribute > 0 && $value['id_product_attribute'] == 0) {
+					// leave score
+				} else if ($id_product_attribute > 0 && $value['id_product_attribute'] != $id_product_attribute) {
+					$score = -1;
+				} else if ($id_product_attribute == 0 && $value['id_product_attribute'] > 0) {
+					$score = -1;
+				}
+
+				foreach (($priorities) as $k => $field)
+					if ((int)${$field} == (int)$value[$field])
+						$score+= pow(2, $k + 1);
+
+				if ($score >= 0) {
+					$scores[$key] = $score;
+				}
+			}
+
+
+			if ( ! sizeof($scores))
+				return false;
+
+
+			$max = (array_keys($scores, max($scores)));
+			return self::$_specificPrices[$id_product][$max[0]];
+		}
+
+		return false;
     }
     
     public static function getSpecificPrices($id_shop = 0)
@@ -1266,7 +1287,7 @@ abstract class Export
         $prices = array();
         if (MoussiqFree::tableExists(_DB_PREFIX_ . 'specific_price' ))
         {
-            $result = Db::getInstance()->ExecuteS('SELECT * FROM `' . _DB_PREFIX_ . 'specific_price` WHERE `id_shop` IN (0, '.(int)$id_shop.')');
+            $result = Db::getInstance()->ExecuteS('SELECT * FROM `' . _DB_PREFIX_ . 'specific_price` WHERE `id_shop` IN (0, '.(int)$id_shop.') ORDER BY from_quantity');
             
             if ($result && sizeof($result))
             {

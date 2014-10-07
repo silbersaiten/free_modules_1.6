@@ -23,7 +23,7 @@ class MoussiqFree extends Module
     {
         $this->name		= 'moussiqfree';
 		$this->tab		= 'frontend_features';
-		$this->version	= '1.6.0';
+		$this->version	= '1.6.1';
 		$this->author	= 'Silbersaiten';
         $this->module_key = "165500ec94ed911a9e584c098e0ebe0b";
 		
