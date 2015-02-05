@@ -1,3 +1,14 @@
+{**
+* Blocknewslettergermanext
+*
+* @category  Module
+* @author    silbersaiten <info@silbersaiten.de>
+* @support   silbersaiten <support@silbersaiten.de>
+* @copyright 2015 silbersaiten
+* @version   1.6.0
+* @link      http://www.silbersaiten.de
+* @license   See joined file licence.txt
+*}
 <!-- Block Newsletter module-->
 <div id="newsletter_block_left" class="block newsletter_gn">
 	<h4>{l s='Newsletter' mod='blocknewslettergermanext'}</h4>
