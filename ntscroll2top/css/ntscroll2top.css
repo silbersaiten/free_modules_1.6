@@ -1,15 +1,23 @@
-div#scroll2Top a{
+div#scroll2Top a {
     display:none; 
-    background: url("../img/scroll2top.png") no-repeat scroll center center rgba(0, 0, 0, .3);
-    width:100px;
-    height:40px;
     position:fixed;
-    bottom:30px;
-    right:30px;
+    bottom:100px;
+    right:100px;
     -moz-opacity:0.3;
     -webkit-opacity:0.3;
     opacity:0.3;
+	
+	z-index:5020;
 }
+
+div#scroll2Top a:after {
+    font-family: "FontAwesome";
+    font-size: 50px;
+    position: absolute;
+	content: "\f139";
+}
+
+
 div#scroll2Top a:hover{
     opacity:0.9;
 }
