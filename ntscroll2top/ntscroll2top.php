@@ -20,7 +20,7 @@ class NTScroll2Top extends Module
 	{
 		$this->name = 'ntscroll2top';
 		$this->tab = 'front_office_features';
-		$this->version = '1.0.0';
+		$this->version = '1.0.1';
 		$this->author = 'silbersaiten';
 		$this->need_instance = 0;
 
@@ -46,8 +46,8 @@ class NTScroll2Top extends Module
 	public function hookHeader($params)
 	{
 		unset($params);
-		$this->context->controller->addCSS(($this->_path).'css/ntscroll2top.css', 'all');
-		$this->context->controller->addJS(($this->_path).'js/ntscroll2top.js', 'all');
+		$this->context->controller->addCSS(($this->_path).'views/css/ntscroll2top.css', 'all');
+		$this->context->controller->addJS(($this->_path).'views/js/ntscroll2top.js', 'all');
 	}
 
 	public function hookDisplayFooter($params)
