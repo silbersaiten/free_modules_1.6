@@ -13,7 +13,7 @@
 <script type="text/javascript">
 	var newsletterPath = '{$module_dir|escape:'html'}';
 </script>
-<script type="text/javascript" src="{$module_dir|escape:'html'}js/newsletter.js"></script>
+<script type="text/javascript" src="{$module_dir|escape:'html'}views/js/newsletter.js"></script>
 {if $nlGnactivation}
 <script type="text/javascript">
 	{literal}

@@ -30,7 +30,7 @@ class BlocknewsletterGermanext extends Module
 	public function __construct()
 	{
 		$this->name = 'blocknewslettergermanext';
-		$this->version = '1.6';
+		$this->version = '1.6.0';
 		$this->author = 'silbersaiten';
 		$this->tab = 'front_office_features';
 
@@ -39,7 +39,7 @@ class BlocknewsletterGermanext extends Module
 		$this->displayName = $this->l('Germanext Newsletter block');
 		$this->description = $this->l('Adds a block for newsletter subscription');
 		$this->confirmUninstall = $this->l('Are you sure you want to delete all your contacts ?');
-		$this->version = '1.5';
+		$this->version = '1.5.0';
 
 		$this->error = false;
 		$this->valid = false;
@@ -401,11 +401,11 @@ class BlocknewsletterGermanext extends Module
                 <div class="margin-form">
                     <input type="radio" name="reqActivation" id="reqActivation_on" value="1" '.(Tools::getValue('reqActivation',
 				Configuration::get('NWGN_ACTIVATION_EMAIL')) ? 'checked="checked" ' : '').'/>
-                    <label class="t" for="reqActivation_on"> <img src="'.$this->_path.'img/enabled.png" alt="'.$this->l('Enabled').
+                    <label class="t" for="reqActivation_on"> <img src="'.$this->_path.'views/img/enabled.png" alt="'.$this->l('Enabled').
 			'" title="'.$this->l('Enabled').'" /></label>
                     <input type="radio" name="reqActivation" id="reqActivation_off" value="0" '.(!Tools::getValue('reqActivation',
 				Configuration::get('NWGN_ACTIVATION_EMAIL')) ? 'checked="checked" ' : '').'/>
-                    <label class="t" for="reqActivation_off"> <img src="'.$this->_path.'img/delete.png" alt="'.$this->l('Disabled').
+                    <label class="t" for="reqActivation_off"> <img src="'.$this->_path.'views/img/delete.png" alt="'.$this->l('Disabled').
 			'" title="'.$this->l('Disabled').'" /></label>
                     <p class="clear">'.
 			$this->l('Choose whether your visitors should activate their subscription using a unique link sent to them by email').'</p>
@@ -415,11 +415,11 @@ class BlocknewsletterGermanext extends Module
                 <div class="margin-form">
                     <input type="radio" name="confirmationEmail" id="confirmationEmail_on" value="1" '.(Tools::getValue('confirmationEmail',
 				Configuration::get('NWGN_CONFIRMATION_EMAIL')) ? 'checked="checked" ' : '').'/>
-                    <label class="t" for="confirmationEmail_on"> <img src="'.$this->_path.'img/enabled.png" alt="'.$this->l('Enabled').
+                    <label class="t" for="confirmationEmail_on"> <img src="'.$this->_path.'views/img/enabled.png" alt="'.$this->l('Enabled').
 			'" title="'.$this->l('Enabled').'" /></label>
                     <input type="radio" name="confirmationEmail" id="confirmationEmail_off" value="0" '.(!Tools::getValue('confirmationEmail',
 				Configuration::get('NWGN_CONFIRMATION_EMAIL')) ? 'checked="checked" ' : '').'/>
-                    <label class="t" for="confirmationEmail_off"> <img src="'.$this->_path.'img/delete.png" alt="'.$this->l('Disabled').
+                    <label class="t" for="confirmationEmail_off"> <img src="'.$this->_path.'views/img/delete.png" alt="'.$this->l('Disabled').
 			'" title="'.$this->l('Disabled').'" /></label>
                     <p class="clear">'.$this->l('Send a confirmation letter to visitor after successfull subscription?').'</p>
                 </div>
@@ -428,11 +428,11 @@ class BlocknewsletterGermanext extends Module
                 <div class="margin-form">
                     <input type="radio" name="confirmationNewPage" id="confirmationNewPage_on" value="1" '.(Tools::getValue('confirmationNewPage',
 				Configuration::get('NWGN_CONFIRMATION_NEW_PAGE')) ? 'checked="checked" ' : '').'/>
-                    <label class="t" for="confirmationNewPage_on"> <img src="'.$this->_path.'img/enabled.png" alt="'.$this->l('Enabled').
+                    <label class="t" for="confirmationNewPage_on"> <img src="'.$this->_path.'views/img/enabled.png" alt="'.$this->l('Enabled').
 			'" title="'.$this->l('Enabled').'" /></label>
                     <input type="radio" name="confirmationNewPage" id="confirmationNewPage_off" value="0" '.(!Tools::getValue('confirmationNewPage',
 				Configuration::get('NWGN_CONFIRMATION_NEW_PAGE')) ? 'checked="checked" ' : '').'/>
-                    <label class="t" for="confirmationNewPage_off"> <img src="'.$this->_path.'img/delete.png" alt="'.$this->l('Disabled').
+                    <label class="t" for="confirmationNewPage_off"> <img src="'.$this->_path.'views/img/delete.png" alt="'.$this->l('Disabled').
 			'" title="'.$this->l('Disabled').'" /></label>
                     <p class="clear">'.$this->l('Display confirmation messages in a new page').'</p>
                 </div>
@@ -480,7 +480,7 @@ class BlocknewsletterGermanext extends Module
         
         <fieldset style="margin-top: 1em;">
             <legend>
-                <img src="'.$this->_path.'img/subscribers.png" />
+                <img src="'.$this->_path.'views/img/subscribers.png" />
                 '.$this->l('Export Newsletter Subscribers').'
             </legend>
             
@@ -497,7 +497,7 @@ class BlocknewsletterGermanext extends Module
         
 		<fieldset style="margin-top: 1em;">
 		    <legend>
-		        <img src="'.$this->_path.'img/customers.png" />
+		        <img src="'.$this->_path.'views/img/customers.png" />
 		        '.$this->l('Export customers').'
 		    </legend>
 		    
@@ -1027,7 +1027,7 @@ class BlocknewsletterGermanext extends Module
 		$this->context->smarty->assign('nlGnactivation', false);
 
 		$this->context->controller->addJqueryPlugin('fancybox');
-		$this->context->controller->addCSS($this->_path.'css/blocknewslettergermanext.css', 'all');
+		$this->context->controller->addCSS($this->_path.'views/css/blocknewslettergermanext.css', 'all');
 
 		if ($hash = Tools::getValue('newsletteractivate'))
 		{
