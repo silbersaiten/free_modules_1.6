@@ -18,4 +18,4 @@ require_once(dirname(__FILE__).'/blocknewslettergermanext.php');
 $instance = new BlocknewsletterGermanext();
 
 if (Tools::getIsset('nw_email'))
-	$instance->ajaxCall();
+	$instance->ajaxCall($_POST);

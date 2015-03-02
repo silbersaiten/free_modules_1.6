@@ -569,15 +569,11 @@ class BlocknewsletterGermanext extends Module
 	}
 
 
-	private function newsletterRegistration($params = false)
+	private function newsletterRegistration($params)
 	{
-		unset($params);
 		$require_activation = ((int)Configuration::get('NWGN_ACTIVATION_EMAIL')) == 1 ? true : false;
-		$action = Tools::getValue('nw_action') ? Tools::getValue('nw_action') : false;
-		$email = Tools::getValue('nw_email') ? Tools::getValue('nw_email') : false;
-
-		// $action = isset($params['nw_action']) ? $params['nw_action'] : false;
-		// $email = isset($params['nw_email']) ? $params['nw_email'] : false;
+		$action = isset($params['nw_action']) ? $params['nw_action'] : false;
+		$email = isset($params['nw_email']) ? $params['nw_email'] : false;
 
 		if (!Validate::isEmail(pSQL($email)))
 		{
@@ -922,11 +918,10 @@ class BlocknewsletterGermanext extends Module
 	}
 
 
-	public function ajaxCall($params = false)
+	public function ajaxCall($params)
 	{
-		unset($params);
 		$require_activation = ((int)Configuration::get('NWGN_ACTIVATION_EMAIL')) == 1 ? true : false;
-		$this->newsletterRegistration();
+		$this->newsletterRegistration($params);
 
 		if ($this->error)
 		{
@@ -937,12 +932,12 @@ class BlocknewsletterGermanext extends Module
 		}
 		elseif ($this->valid)
 		{
-			$action = Tools::getValue('nw_action') ? Tools::getValue('nw_action') : false;
+			$action = isset($params['nw_action']) ? $params['nw_action'] : false;
 
 			if (!$require_activation && Configuration::get('NWGN_CONFIRMATION_EMAIL') && $action && (int)$action == 0)
 			{
 				Mail::Send(
-					(int)Tools::getValue('cookie')->id_lang,
+					(int)$params['cookie']->id_lang,
 					'newsletter_conf',
 					$this->l('Newsletter confirmation'),
 					array(),
@@ -970,7 +965,7 @@ class BlocknewsletterGermanext extends Module
 
 		if (Tools::isSubmit('submitNewsletter'))
 		{
-			$this->newsletterRegistration();
+			$this->newsletterRegistration($_POST);
 
 			if ($this->error)
 				$this->context->smarty->assign(
