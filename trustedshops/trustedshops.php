@@ -1,35 +1,27 @@
 <?php
-/*
-* 2007-2013 PrestaShop
-*
-* NOTICE OF LICENSE
-*
-* This source file is subject to the Academic Free License (AFL 3.0)
-* that is bundled with this package in the file LICENSE.txt.
-* It is also available through the world-wide-web at this URL:
-* http://opensource.org/licenses/afl-3.0.php
-* If you did not receive a copy of the license and are unable to
-* obtain it through the world-wide-web, please send an email
-* to license@prestashop.com so we can send you a copy immediately.
-*
-* DISCLAIMER
-*
-* Do not edit or add to this file if you wish to upgrade PrestaShop to newer
-* versions in the future. If you wish to customize PrestaShop for your
-* needs please refer to http://www.prestashop.com for more information.
-*
-*  @author PrestaShop SA <contact@prestashop.com>
-*  @copyright  2007-2013 PrestaShop SA
-*  @license    http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
-*  International Registered Trademark & Property of PrestaShop SA
-*/
+/**
+ * 2015 silbersaiten The module is based on the trustedshops module originally developed by PrestaShop
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Open Software License (OSL 3.0)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * http://opensource.org/licenses/osl-3.0.php
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to support@silbersaiten.de so we can send you a copy immediately.
+ *
+ * @author    silbersaiten www.silbersaiten.de <info@silbersaiten.de>
+ * @copyright 2015 silbersaiten
+ * @license   http://opensource.org/licenses/osl-3.0.php Open Software License (OSL 3.0)
+ */
 
 if (!defined('_PS_VERSION_'))
 	exit;
 
-require (_PS_MODULE_DIR_.'trustedshops/lib/AbsTrustedShops.php');
-require (_PS_MODULE_DIR_.'trustedshops/lib/TrustedShopsRating.php');
-require (_PS_MODULE_DIR_.'trustedshops/lib/TSBuyerProtection.php');
+require(_PS_MODULE_DIR_.'trustedshops/classes/AbsTrustedShops.php');
+require(_PS_MODULE_DIR_.'trustedshops/classes/TSCommon.php');
 
 class TrustedShops extends Module
 {
@@ -37,7 +29,7 @@ class TrustedShops extends Module
 	 * Saved each Object needed list of AbsTrustedShops extended objects
 	 * @var array
 	 */
-	private static $objects_list = array();
+	private static $obj_ts_common;
 
 	private $errors = array();
 
@@ -48,64 +40,57 @@ class TrustedShops extends Module
 	private $confirmations = array();
 
 	public static $seal_displayed = false;
+	
+	private static $template_version;
+
+	private $available_languages = array('en', 'fr', 'de', 'es', 'it', 'pl', 'nl');
 
 	public function __construct()
 	{
-		global $smarty;
-
 		$this->name = 'trustedshops';
-		$this->tab = 'payment_security';
-		$this->version = '1.3.6';
-		$this->author = 'PrestaShop';
+		$this->tab = 'advertising_marketing';
+		$this->version = '2.3.0';
+		$this->author = 'silbersaiten';
+		$this->bootstrap = true;
+		
+		self::$template_version = version_compare(_PS_VERSION_, '1.6', '<') ? '1.5' : '1.6';
 
 		parent::__construct();
 
-		/** Backward compatibility */
-		require(_PS_MODULE_DIR_.$this->name.'/backward_compatibility/backward.php');
-
-		if (empty(self::$objects_list))
-		{
-			TSBuyerProtection::setTranslationObject($this);
-			$obj_ts_rating = new TrustedShopsRating();
-			$obj_ts_buyerprotection = new TSBuyerProtection();
-			$obj_ts_buyerprotection->_setEnvApi(TSBuyerProtection::ENV_MOD);
-			self::$objects_list = array($obj_ts_rating, $obj_ts_buyerprotection);
-			self::$objects_list[0]->setModuleName($this->name);
-			self::$objects_list[0]->setSmarty($smarty);
-		}
+		TSCommon::setTranslationObject($this);
+		self::$obj_ts_common = new TSCommon();
+		self::$obj_ts_common->setEnvApi(TSCommon::ENV_MOD);
+		self::$obj_ts_common->setModuleName($this->name);
+		self::$obj_ts_common->setSmarty($this->context->smarty);
 
 		if (!extension_loaded('soap'))
 			$this->warnings[] = $this->l('This module requires the SOAP PHP extension to function properly.');
 
-		foreach (self::$objects_list as $object)
-		{
-			$this->limited_countries = array_merge($this->limited_countries, $object->limited_countries);
-
-			if (!empty($object->warnings))
-				$this->warnings = array_merge($this->warnings, $object->warnings);
-		}
+		if (!empty(self::$obj_ts_common->warnings))
+			$this->warnings = array_merge($this->warnings, self::$obj_ts_common->warnings);
 
 		if (!empty($this->warnings))
 			$this->warning = implode(',<br />', $this->warnings).'.';
 
-		$this->displayName = $this->l('Trusted Shops trust solutions');
-		$this->description = $this->l('Build confidence in your online shop with the Trusted Shops quality seal, buyer protection and customer rating.');
+		$this->displayName = $this->l('Trusted Shops Customer Reviews');
+		$this->description = $this->l('Easily collect, show and manage real customer reviews. Integrate the TrustedShops Trustbadge® within minutes and display trust at first glance.');
 		$this->confirmUninstall = $this->l('Are you sure you want to delete all your settings?');
 	}
 
 	public function install()
 	{
-		$return = true;
+		self::$obj_ts_common->install();
 
-		foreach (self::$objects_list as $object)
-		{
-			$return = $object->install();
-
-			if (!$return)
-				break;
-		}
-
-		$return = ($return) ? (parent::install() AND $this->registerHook('orderConfirmation') AND $this->registerHook('newOrder') AND $this->registerHook('rightColumn') AND $this->registerHook('paymentTop') AND $this->registerHook('orderConfirmation')) : $return;
+		$return = parent::install() &&
+			$this->registerHook('LeftColumn') &&
+			$this->registerHook('displayBackOfficeHeader') &&
+			$this->registerHook('orderConfirmation') &&
+			$this->registerHook('newOrder') &&
+			$this->registerHook('actionOrderStatusPostUpdate') &&
+			$this->registerHook('Footer') &&
+			$this->registerHook('paymentTop') &&
+            //$this->registerHook('displayAfterShoppingCartBlock') &&
+			$this->registerHook('orderConfirmation');
 		$id_hook = _PS_VERSION_ < '1.5' ? Hook::get('payment') : Hook::getIdByName('payment');
 		$this->updatePosition($id_hook, 0, 1);
 
@@ -114,66 +99,101 @@ class TrustedShops extends Module
 
 	public function uninstall()
 	{
-		foreach (self::$objects_list as $object)
-		{
-			$return = $object->uninstall();
+		self::$obj_ts_common->uninstall();
+		return parent::uninstall();
+	}
+	
+	public static function getTemplateByVersion($template_name)
+	{
+		if (self::$template_version == '1.5')
+			return $template_name . '_1.5.tpl';
+		
+		return $template_name . '.tpl';
+	}
 
-			if (!$return)
-				return false;
+	private function getAllowedIsobyId($id_lang)
+	{
+		$lang = Language::getIsoById($id_lang);
+		$lang = in_array($lang, $this->available_languages) ? $lang : 'en';
+
+		return $lang;
+	}
+
+	public function displayInfo()
+	{
+		switch (Tools::strtolower(Language::getIsoById((int)$this->context->cookie->id_lang)))
+		{
+			case 'de':
+				$applynow_link = 'http://www.trustedshops.de/shopbetreiber/index.html?a_aid=546a2b2c79731&etcc_med=link&etcc_cmp=back&etcc_par=sofpar&etcc_ctv=prestashop&etcc_tar=sales';
+				break;
+			case 'es':
+				$applynow_link = 'https://www.trustedshops.es/comerciante/?a_aid=546a2b2c79731';
+				break;
+			case 'fr':
+				$applynow_link = 'https://www.trustedshops.fr/inscription/?a_aid=546a2b2c79731&utm_source=par&utm_medium=links&utm_content=presta_modul&utm_campaign=pricing';
+				break;
+			case 'pl':
+				$applynow_link = 'https://www.trustedshops.pl/handlowcy/?a_aid=546a2b2c79731';
+				break;
+			case 'it':
+				$applynow_link = 'https://www.trustedshops.it/venditori/?a_aid=546a2b2c79731';
+				break;
+			case 'nl':
+				$applynow_link = 'http://www.trustedshops.nl/registreer/?a_aid=546a2b2c79731?utm_source=par&utm_medium=links&utm_content=presta_backend&utm_campaign=pricing';
+				break;
+			default:
+				$applynow_link = 'https://www.trustedshops.co.uk/signup/?a_aid=546a2b2c79731&utm_source=par&utm_medium=links&utm_content=presta_modul&utm_campaign=pricing';
 		}
 
-		return parent::uninstall();
+		$this->smarty->assign(array(
+			'_path' => $this->_path,
+			'ts_rating_image' => $this->_path.'img/ts_rating_'.$this->getAllowedIsobyId($this->context->cookie->id_lang).'.jpg',
+			'applynow_link' => $applynow_link
+		));
+
+		return $this->display(__FILE__, 'views/templates/admin/'.self::getTemplateByVersion('information'));
+	}
+
+	public function displayConfiguration()
+	{
+		return '';
 	}
 
 	public function getContent()
 	{
-		$out = '<h2>'.$this->displayName.'</h2>';
-		$tabs = array();
-
-		foreach (self::$objects_list as $key => $object)
-		{
-			$object->id_tab = $key;
-			$tabs['title'][] = $object->tab_name;
-			$tabs['content'][] = $object->getContent();
-		}
-
-		// Display Title Tabs
-		$out .= '<ul id="menuTabs">';
-		foreach($tabs['title'] as $key=>$title)
-			$out .= '<li id="menuTab'.$key.'" class="menuTabButton'.( (int)$key === (int)Tools::getValue('id_tab') ? ' selected' : '' ).'">'.($key+1).'. '.$title.'</li>';
-		$out .= '</ul>';
-
-		// Display content Tabs
-		$out .= '<div id="tabList">';
-		foreach($tabs['content'] as $key=>$content)
-			$out .= '<div id="menuTab'.$key.'Sheet" class="tabItem'.( (int)$key === (int)Tools::getValue('id_tab') ? ' selected' : '' ).'">'.$content.'</div>';
-		$out .= '<br clear="left" />'.$this->displayCSSJSTab();
+		$out = $this->displayInfo();
+		$out .= $this->displayConfiguration();
+		$out .= self::$obj_ts_common->getContent();
 
 		// Check If each object (display as Tab) contains errors message of
 		$this->checkObjectsErrorsOrConfirmations();
 
-		return (empty($this->errors) ? $this->displayConfirmations() : $this->displayErrors()).$out;
+		return (empty($this->errors)?$this->displayConfirmations():$this->displayErrors()).$out;
 	}
 
 	private function displayCSSJSTab()
 	{
-		$id_tab = isset($_GET['id_tab']) ? (int)$_GET['id_tab'] : 0;
+		$id_tab = Tools::getIsset('id_tab') ? (int)Tools::getValue('id_tab') : 0;
 
 		return '
 		<style>
 			#menuTabs { float: left; padding: 0; text-align: left; margin:0}
-			#menuTabs li { text-align: left; float: left; display: inline; padding: 5px 10px 5px 5px; background: #EFEFEF; font-weight: bold; cursor: pointer; border-left: 1px solid #EFEFEF; border-right: 1px solid #EFEFEF; border-top: 1px solid #EFEFEF; }
-			#menuTabs li.menuTabButton.selected { background: #FFF6D3; border-left: 1px solid #CCCCCC; border-right: 1px solid #CCCCCC; border-top: 1px solid #CCCCCC; }
+			#menuTabs li { text-align: left; float: left; display: inline; padding: 5px 10px 5px 5px;
+			background: #EFEFEF; font-weight: bold; cursor: pointer; border-left: 1px solid #EFEFEF;
+			border-right: 1px solid #EFEFEF; border-top: 1px solid #EFEFEF; }
+			#menuTabs li.menuTabButton.selected { background: #FFF6D3; border-left: 1px solid #CCCCCC;
+			border-right: 1px solid #CCCCCC; border-top: 1px solid #CCCCCC; }
 			#tabList { clear: left;}
 			.tabItem { display: none; }
-			.tabItem.selected { display: block; background: #fcfcfc; border: 1px solid #CCCCCC; padding: 10px; padding-top: 20px;}
+			.tabItem.selected { display: block; background: #fcfcfc; border: 1px solid #CCCCCC;
+			padding: 10px; padding-top: 20px;}
 		</style>
 		<script>
 			$().ready(function()
 			{
 				$("#menuTab'.$id_tab.'Sheet").addClass("selected");
 				$("#menuTab'.$id_tab.'").addClass("selected");
-			});
+			})
 			$(".menuTabButton").click(function ()
 			{
 				$(".menuTabButton.selected").removeClass("selected");
@@ -192,14 +212,11 @@ class TrustedShops extends Module
 	 */
 	private function checkObjectsErrorsOrConfirmations()
 	{
-		foreach (self::$objects_list as $object)
-		{
-			if (!empty($object->errors))
-				$this->errors = array_merge($this->errors, $object->errors);
+		if (!empty(self::$obj_ts_common->errors))
+			$this->errors = array_merge($this->errors, self::$obj_ts_common->errors);
 
-			if (!empty($object->confirmations))
-				$this->confirmations = array_merge($this->confirmations, $object->confirmations);
-		}
+		if (!empty(self::$obj_ts_common->confirmations))
+			$this->confirmations = array_merge($this->confirmations, self::$obj_ts_common->confirmations);
 	}
 
 	private function displayConfirmations()
@@ -229,25 +246,36 @@ class TrustedShops extends Module
 		return $this->dynamicHook($params, __FUNCTION__);
 	}
 
-	public function hookNewOrder($params)
+	public function hookActionOrderStatusPostUpdate($params)
 	{
 		return $this->dynamicHook($params, __FUNCTION__);
 	}
 
-	public function hookRightColumn($params)
+	public function hookNewOrder($params)
 	{
 		return $this->dynamicHook($params, __FUNCTION__);
 	}
 
 	public function hookLeftColumn($params)
 	{
-		return $this->hookRightColumn($params);
+		return $this->dynamicHook($params, __FUNCTION__);
+	}
+
+	public function hookRightColumn($params)
+	{
+		return $this->hookLeftColumn($params);
 	}
 
 	public function hookPaymentTop($params)
 	{
 		return $this->dynamicHook($params, __FUNCTION__);
 	}
+
+    public function hookDisplayAfterShoppingCartBlock($params)
+    {
+        return $this->dynamicHook($params, __FUNCTION__);
+    }
+
 	public function hookFooter($params)
 	{
 		return $this->dynamicHook($params, __FUNCTION__);
@@ -255,28 +283,32 @@ class TrustedShops extends Module
 
 	private function dynamicHook($params, $hook_name)
 	{
-
 		if (!$this->active)
 			return '';
 
 		$return = '';
 
-		foreach (self::$objects_list as $object)
-			if (method_exists($object, $hook_name))
-				$return .= $object->{$hook_name}($params);
+		if (method_exists(self::$obj_ts_common, $hook_name))
+			$return .= self::$obj_ts_common->{$hook_name}($params);
 
 		return $return;
 	}
 
-	public static function display_seal()
+	public static function displaySeal()
 	{
 		if (!TrustedShops::$seal_displayed)
 		{
 			Context::getContext()->smarty->assign('ts_module_dir', __PS_BASE_URI__.'modules/trustedshops/');
 			TrustedShops::$seal_displayed = true;
-			return Context::getContext()->smarty->fetch(dirname(__FILE__).'/seal_of_approval.tpl');
+			return Context::getContext()->smarty->fetch(dirname(__FILE__).'/views/templates/front/'.TSCommon::getTemplateByVersion('seal_of_approval'));
 		}
 		return '';
 	}
+	
+	public function hookDisplayBackOfficeHeader($params)
+	{
+		if ($this->context->controller instanceof AdminModulesController && Tools::getValue('configure') == $this->name) {
+			$this->context->controller->addCSS($this->_path . 'css/admin.css');
+		}
+	}
 }
-
