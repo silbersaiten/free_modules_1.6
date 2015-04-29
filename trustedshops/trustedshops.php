@@ -13,7 +13,7 @@
  * to support@silbersaiten.de so we can send you a copy immediately.
  *
  * @author    silbersaiten www.silbersaiten.de <info@silbersaiten.de>
- * @copyright 2014 silbersaiten
+ * @copyright 2015 silbersaiten
  * @license   http://opensource.org/licenses/osl-3.0.php Open Software License (OSL 3.0)
  */
 
@@ -49,7 +49,7 @@ class TrustedShops extends Module
 	{
 		$this->name = 'trustedshops';
 		$this->tab = 'advertising_marketing';
-		$this->version = '2.2.4';
+		$this->version = '2.3.0';
 		$this->author = 'silbersaiten';
 		$this->bootstrap = true;
 		
