@@ -13,7 +13,7 @@
  * to support@silbersaiten.de so we can send you a copy immediately.
  *
  * @author    silbersaiten www.silbersaiten.de <info@silbersaiten.de>
- * @copyright 2015 silbersaiten
+ * @copyright 2014 silbersaiten
  * @license   http://opensource.org/licenses/osl-3.0.php Open Software License (OSL 3.0)
  */
 
@@ -49,7 +49,7 @@ class TrustedShops extends Module
 	{
 		$this->name = 'trustedshops';
 		$this->tab = 'advertising_marketing';
-		$this->version = '2.3.0';
+		$this->version = '2.2.4';
 		$this->author = 'silbersaiten';
 		$this->bootstrap = true;
 		
@@ -82,7 +82,6 @@ class TrustedShops extends Module
 		self::$obj_ts_common->install();
 
 		$return = parent::install() &&
-			$this->registerHook('LeftColumn') &&
 			$this->registerHook('displayBackOfficeHeader') &&
 			$this->registerHook('orderConfirmation') &&
 			$this->registerHook('newOrder') &&
@@ -254,16 +253,6 @@ class TrustedShops extends Module
 	public function hookNewOrder($params)
 	{
 		return $this->dynamicHook($params, __FUNCTION__);
-	}
-
-	public function hookLeftColumn($params)
-	{
-		return $this->dynamicHook($params, __FUNCTION__);
-	}
-
-	public function hookRightColumn($params)
-	{
-		return $this->hookLeftColumn($params);
 	}
 
 	public function hookPaymentTop($params)

@@ -1852,62 +1852,6 @@ class TSCommon extends AbsTrustedShops
 		}
 	}
 
-	public function hookLeftColumn($params)
-	{
-		$context = Context::getContext();
-
-
-		if (isset($context->language) && is_object($context->language))
-			$id_lang = (int)$context->language->id;
-		else if (Tools::getValue('id_lang'))
-			$id_lang = (int)Tools::getValue('id_lang');
-		else
-			$id_lang = (int)Configuration::get('PS_LANG_DEFAULT');
-
-		$iso_lang = $iso_cert = Language::getIsoById((int)$id_lang);
-
-		$tab_id = false;
-
-		if (isset(TSCommon::$certificates[Tools::strtoupper($iso_cert)]['tsID']))
-			$tab_id = TSCommon::$certificates[Tools::strtoupper($iso_cert)]['tsID'];
-
-		if (!$tab_id)
-			return false;
-
-		$display_in_shop = 1;
-		$display_rating_frontend = TSCommon::$certificates[Tools::strtoupper($iso_cert)]['display_rating_front_end'];
-
-		self::$smarty->assign('display_widget', $display_in_shop);
-
-		if ($display_in_shop)
-		{
-			$filename = $this->getWidgetFilename(Tools::strtoupper($iso_cert));
-			$cache = new WidgetCache(_PS_MODULE_DIR_.$filename, $tab_id);
-
-			if (!$cache->isFresh())
-				$cache->refresh();
-
-			if (file_exists(_PS_MODULE_DIR_.$filename))
-				self::$smarty->assign(array('ts_id' => $tab_id, 'filename' => _MODULE_DIR_.$filename));
-		}
-
-		self::$smarty->assign('display_rating_link', (int)$display_rating_frontend);
-
-		if ($display_rating_frontend)
-			self::$smarty->assign(array('rating_url' => $this->getRatenowUrl($iso_cert), 'language' => $iso_lang));
-
-		if (TSCommon::$certificates[Tools::strtoupper($iso_cert)])
-			return $this->display(self::$module_name, 'views/templates/front/'.self::getTemplateByVersion('widget'));
-
-		return '';
-	}
-
-
-	public function getWidgetFilename($iso_cert)
-	{
-		return self::$module_name.'/cache/'.TSCommon::$certificates[$iso_cert]['tsID'].'.gif';
-	}
-
 	public function getTempWidgetFilename($ts_id)
 	{
 		return self::$module_name.'/cache/'.$ts_id.'.gif';
