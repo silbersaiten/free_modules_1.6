@@ -529,7 +529,7 @@ class TSCommon extends AbsTrustedShops
 			array('name' => 'paymentType', 'validator' => array('isString')),
 			array('name' => 'buyerEmail', 'validator' => array('isEmail')),
 			array('name' => 'shopCustomerID', 'validator' => array('isInt')),
-			array('name' => 'shopOrderID', 'validator' => array('isInt')),
+			array('name' => 'shopOrderID', 'validator' => array('isString')),
 			array('name' => 'orderDate', 'ereg' => '#[0-9]{4}\-[0-9]{2}\-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}#'),
 			array('name' => 'shopSystemVersion', 'validator' => array('isCleanHtml')),
 			array('name' => 'wsUser', 'validator' => array('isCleanHtml')),
