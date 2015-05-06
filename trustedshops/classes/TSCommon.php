@@ -292,6 +292,7 @@ class TSCommon extends AbsTrustedShops
 			$category->link_rewrite[$language] = 'trustedshops';
 		}
 
+		// $category->id_parent = Configuration::get('PS_HOME_CATEGORY');
 		$category->id_parent = 0;
 		$category->level_depth = 0;
 		$category->active = 0;
@@ -837,9 +838,9 @@ class TSCommon extends AbsTrustedShops
 			$product->id_category_default = TSCommon::$cat_id;
 			$product->active = true;
 			$product->visibility = 'none';
-			$product->id_tax = 0;
+			$product->id_tax_rules_group = 0;
 			$product->add();
-
+			$product->addToCategories(TSCommon::$cat_id);
 			if ($product->id)
 			{
 				$query = '
@@ -1342,7 +1343,6 @@ class TSCommon extends AbsTrustedShops
 		$iso_lang = $iso_cert = Tools::strtoupper(Language::getIsoById($params['cookie']->id_lang));
 
 		$tab_id = false;
-
 		if (isset(TSCommon::$certificates[Tools::strtoupper($iso_cert)]['tsID']))
 			$tab_id = TSCommon::$certificates[Tools::strtoupper($iso_cert)]['tsID'];
 
@@ -1351,7 +1351,6 @@ class TSCommon extends AbsTrustedShops
 
 		if (isset(TSCommon::$certificates[$iso_cert]['tsID']))
 		{
-
 			TSCommon::$smarty->assign('trusted_shops_id', TSCommon::$certificates[$iso_cert]['tsID']);
 			TSCommon::$smarty->assign('variant', isset(TSCommon::$certificates[$iso_cert]['variant']) ? (in_array(TSCommon::$certificates[$iso_cert]['variant'], array_keys($this->available_seal_variants)) ? TSCommon::$certificates[$iso_cert]['variant'] : 'default') : 'default');
 			TSCommon::$smarty->assign('yoffset', TSCommon::$certificates[$iso_cert]['yoffset']);
@@ -1536,7 +1535,7 @@ class TSCommon extends AbsTrustedShops
 		if (!empty($this->errors))
 			return '<p style="color:red">'.implode('<br />', $this->errors).'</p>';
 
-		return '';
+		return $this->display(TSCommon::$module_name, '/views/templates/front/'.self::getTemplateByVersion('order-confirmation-tsbp-excellence'));
 	}
 
 	/**
