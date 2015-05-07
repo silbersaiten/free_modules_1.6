@@ -18,8 +18,8 @@
 <script type="text/javascript" src="{$site_uri|escape:'html':'UTF-8'}modules/trustedshops/js/payment.js" ></script>
 <script type="text/javascript">
     $().ready(function() {
-	TSPayment.payment_type = $.parseJSON('{$payment_types_json|escape:'html':'UTF-8'}');
-	TSPayment.payment_module = $.parseJSON('{$payment_collection_json|escape:'html':'UTF-8'}');
+	TSPayment.payment_type = $.parseJSON('{$payment_types_json|escape:'UTF-8'}');
+	TSPayment.payment_module = $.parseJSON('{$payment_collection_json|escape:'UTF-8'}');
 	
 	{literal}
 	$('.payment-module-label').css(TSPayment.module_box.css).fadeIn();
