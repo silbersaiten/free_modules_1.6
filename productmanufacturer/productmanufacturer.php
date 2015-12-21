@@ -8,7 +8,7 @@ class ProductManufacturer extends Module
 	 {
 		  $this->name = 'productmanufacturer';
 		  $this->tab = 'Products';
-		  $this->version = '0.5';
+		  $this->version = '0.8';
   		  $this->author = 'silbersaiten';
   
 		  parent::__construct();
